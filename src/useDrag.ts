@@ -44,7 +44,7 @@ export const useDrag = (options: {
 			onEnd?.(offsetPosition.x, offsetPosition.y)
 			setOffsetPosition({ x: 0, y: 0 })
 		}
-	}, [isMoving, onEnd])
+	}, [isMoving, onEnd, offsetPosition])
 
 	const onPointerMove = useMemo(() => {
 		if (!isMoving) {
