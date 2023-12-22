@@ -1,4 +1,4 @@
-# React ripple click [![npm](https://img.shields.io/npm/v/react-use-drag.svg)](https://www.npmjs.com/package/react-use-drag) ![npm type definitions](https://img.shields.io/npm/types/react-use-drag.svg)
+# React use drag [![npm](https://img.shields.io/npm/v/react-use-drag.svg)](https://www.npmjs.com/package/react-use-drag) ![npm type definitions](https://img.shields.io/npm/types/react-use-drag.svg)
 
 Drag interactions made easier. Try interactive [CodeSandbox demo](https://codesandbox.io/s/react-use-drag?file=/src/App.js).
 
