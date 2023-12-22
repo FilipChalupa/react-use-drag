@@ -7,11 +7,12 @@ import {
 	useState,
 } from 'react'
 
-export const useDrag = (
-	onRelativePositionChange: (x: number, y: number) => void,
-	onEnd: (x: number, y: number) => void,
-	onStart: () => void,
-) => {
+export const useDrag = (options: {
+	onRelativePositionChange: (x: number, y: number) => void
+	onStart?: () => void
+	onEnd?: (x: number, y: number) => void
+}) => {
+	const { onRelativePositionChange, onStart, onEnd } = options
 	const [isMoving, setIsMoving] = useState(false)
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
@@ -27,7 +28,7 @@ export const useDrag = (
 			}
 			event.currentTarget.setPointerCapture(event.pointerId)
 			setIsMoving(true)
-			onStart()
+			onStart?.()
 		},
 		[onStart],
 	)
@@ -40,7 +41,7 @@ export const useDrag = (
 			event.preventDefault()
 			setIsMoving(false)
 			event.currentTarget.releasePointerCapture(event.pointerId)
-			onEnd(offsetPosition.x, offsetPosition.y)
+			onEnd?.(offsetPosition.x, offsetPosition.y)
 			setOffsetPosition({ x: 0, y: 0 })
 		}
 	}, [isMoving, onEnd])
