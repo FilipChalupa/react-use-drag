@@ -16,10 +16,37 @@ npm install react-use-drag
 import { useDrag } from 'react-use-drag'
 
 const App = () => {
-	const drag = useDrag()
+	const [position, setPosition] = useState({ x: 0, y: 0 })
+	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
+	const onRelativePositionChange = useCallback((x, y) => {
+		setPositionOffset({ x, y })
+	}, [])
+	const onStart = useCallback(() => {
+		console.log('Dragging has started')
+	}, [])
+	const onEnd = useCallback((x, y) => {
+		setPosition((position) => ({
+			x: position.x + x,
+			y: position.y + y,
+		}))
+		setPositionOffset({ x: 0, y: 0 })
+	}, [])
+	const { elementProps, isMoving } = useDrag({
+		onRelativePositionChange,
+		onStart,
+		onEnd,
+	})
 
-	// @TODO
-
-	return <button>Drag me</button>
+	return (
+		<button
+			className="draggable"
+			style={{
+				translate: `translate(${position.x}px ${position.y}px)`,
+			}}
+			{...elementProps}
+		>
+			{isMoving ? '🚶' : '🧍'}
+		</button>
+	)
 }
 ```
