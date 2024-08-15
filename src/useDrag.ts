@@ -66,6 +66,17 @@ export const useDrag = (options: {
 		}
 	}, [isMoving])
 
+	const onPointerCancel = useMemo(() => {
+		if (!isMoving) {
+			return undefined
+		}
+		return (event: PointerEvent<HTMLElement>) => {
+			event.preventDefault()
+			setIsMoving(false)
+			setOffsetPosition({ x: 0, y: 0 })
+		}
+	}, [isMoving])
+
 	useEffect(() => {
 		onRelativePositionChange(offsetPosition.x, offsetPosition.y)
 	}, [offsetPosition.x, offsetPosition.y, onRelativePositionChange])
@@ -75,8 +86,9 @@ export const useDrag = (options: {
 			onPointerDown,
 			onPointerUp,
 			onPointerMove,
+			onPointerCancel,
 		}),
-		[onPointerDown, onPointerMove, onPointerUp],
+		[onPointerDown, onPointerMove, onPointerUp, onPointerCancel],
 	)
 
 	return useMemo(() => ({ isMoving, elementProps }), [isMoving, elementProps])
