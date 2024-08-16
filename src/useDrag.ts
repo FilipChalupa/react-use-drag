@@ -33,21 +33,24 @@ export const useDrag = (options: {
 		[onStart],
 	)
 
-	const handleEnd = useCallback((byCancellation: boolean) => {
-		if (!isMoving) {
-			return undefined
-		}
-		return (event: PointerEvent<HTMLElement>) => {
-			event.preventDefault()
-			setIsMoving(false)
-			event.currentTarget.releasePointerCapture(event.pointerId)
-			onEnd?.(
-				byCancellation ? 0 : offsetPosition.x,
-				byCancellation ? 0 : offsetPosition.y,
-			)
-			setOffsetPosition({ x: 0, y: 0 })
-		}
-	}, [])
+	const handleEnd = useCallback(
+		(byCancellation: boolean) => {
+			if (!isMoving) {
+				return undefined
+			}
+			return (event: PointerEvent<HTMLElement>) => {
+				event.preventDefault()
+				setIsMoving(false)
+				event.currentTarget.releasePointerCapture(event.pointerId)
+				onEnd?.(
+					byCancellation ? 0 : offsetPosition.x,
+					byCancellation ? 0 : offsetPosition.y,
+				)
+				setOffsetPosition({ x: 0, y: 0 })
+			}
+		},
+		[isMoving, offsetPosition.x, offsetPosition.y, onEnd],
+	)
 
 	const onPointerUp = useMemo(() => handleEnd(false), [handleEnd])
 	const onPointerCancel = useMemo(() => handleEnd(true), [handleEnd])
