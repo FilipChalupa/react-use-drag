@@ -9,7 +9,9 @@
 	"scripts": {
 		"start": "rollup -c -w",
 		"build": "rollup -c",
-		"prepare": "npm run build"
+		"prepare": "npm run build",
+		"lint": "eslint .",
+		"type-check": "tsc --noEmit"
 	},
 	"repository": {
 		"type": "git",
@@ -28,9 +30,14 @@
 	},
 	"license": "ISC",
 	"devDependencies": {
+		"@eslint/js": "^9.39.3",
 		"@rollup/plugin-commonjs": "^25.0.7",
 		"@rollup/plugin-node-resolve": "^15.2.3",
 		"@types/react": "^18.0.10",
+		"eslint": "^9.39.3",
+		"eslint-config-prettier": "^9.1.2",
+		"eslint-plugin-react": "^7.37.5",
+		"eslint-plugin-react-hooks": "^5.2.0",
 		"prettier": "^3.0.3",
 		"react": "^18.1.0",
 		"rollup": "^4.2.0",
@@ -38,6 +45,7 @@
 		"rollup-plugin-peer-deps-external": "^2.2.4",
 		"rollup-plugin-typescript2": "^0.36.0",
 		"typescript": "^5.2.2",
+		"typescript-eslint": "^8.56.0",
 		"typescript-plugin-css-modules": "^5.0.2"
 	},
 	"peerDependencies": {

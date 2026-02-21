@@ -52,7 +52,7 @@ export const useDrag = (options: UseDragOptions) => {
 			setIsMoving(true)
 			onStart?.()
 		},
-		[onStart],
+		[onStart, setIsMoving],
 	)
 
 	const handleEnd = useCallback(
@@ -71,7 +71,7 @@ export const useDrag = (options: UseDragOptions) => {
 				setOffsetPosition({ x: 0, y: 0 })
 			}
 		},
-		[isMoving, offsetPosition.x, offsetPosition.y, onEnd],
+		[isMoving, offsetPosition.x, offsetPosition.y, onEnd, setIsMoving, setOffsetPosition],
 	)
 
 	const onPointerUp = useMemo(() => handleEnd(false), [handleEnd])
@@ -95,7 +95,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			setOffsetPosition(newOffsetPosition)
 		}
-	}, [isMoving])
+	}, [isMoving, setOffsetPosition])
 
 	useEffect(() => {
 		onRelativePositionChange(offsetPosition.x, offsetPosition.y)
