@@ -7,11 +7,33 @@ import {
 	useState,
 } from 'react'
 
-export const useDrag = (options: {
+/**
+ * Options for the useDrag hook.
+ */
+export interface UseDragOptions {
+	/** Called when the position changes during dragging. x and y are relative to the start position. */
 	onRelativePositionChange: (x: number, y: number) => void
+	/** Optional. Called when the dragging interaction starts. */
 	onStart?: () => void
+	/** Optional. Called when the dragging interaction ends. Receives final relative x and y. */
 	onEnd?: (x: number, y: number) => void
-}) => {
+}
+
+/**
+ * Hook to handle drag interactions using Pointer Events.
+ * 
+ * @param options - Configuration options for the drag interaction.
+ * @returns An object containing:
+ * - `isMoving`: boolean indicating if dragging is active.
+ * - `elementProps`: props to spread onto the draggable element.
+ * 
+ * @example
+ * const { elementProps, isMoving } = useDrag({
+ *   onRelativePositionChange: (x, y) => console.log('Offset:', x, y),
+ * })
+ * return <div {...elementProps} style={{ touchAction: 'none' }} />
+ */
+export const useDrag = (options: UseDragOptions) => {
 	const { onRelativePositionChange, onStart, onEnd } = options
 	const [isMoving, setIsMoving] = useState(false)
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
