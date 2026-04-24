@@ -26,19 +26,20 @@ const AnyDirection = () => {
 		onEnd,
 	})
 
+	const x = position.x + positionOffset.x
+	const y = position.y + positionOffset.y
+
 	return (
-		<button
-			className="draggable"
-			style={
-				{
-					'--x': `${position.x + positionOffset.x}px`,
-					'--y': `${position.y + positionOffset.y}px`,
-				} as React.CSSProperties
-			}
-			{...elementProps}
-		>
-			{isMoving ? '🚶' : '🧍'}
-		</button>
+		<div className="any-direction-canvas">
+			<pre className="any-direction-readout">{`x: ${Math.round(x)}\ny: ${Math.round(y)}`}</pre>
+			<button
+				className="draggable"
+				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
+				{...elementProps}
+			>
+				{isMoving ? '🚶' : '🧍'}
+			</button>
+		</div>
 	)
 }
 
@@ -47,7 +48,7 @@ const meta: Meta<typeof AnyDirection> = {
 	component: AnyDirection,
 	tags: ['autodocs'],
 	parameters: {
-		layout: 'centered',
+		layout: 'fullscreen',
 		docs: {
 			description: {
 				component:
