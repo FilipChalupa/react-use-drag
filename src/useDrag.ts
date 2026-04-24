@@ -51,7 +51,9 @@ export const useDrag = (options: UseDragOptions) => {
 	const [isMoving, setIsMoving] = useState(false)
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
-	const lastMoveRef = useRef<{ time: number; x: number; y: number } | null>(null)
+	const lastMoveRef = useRef<{ time: number; x: number; y: number } | null>(
+		null,
+	)
 	const lastVelocityRef = useRef<Velocity>({ x: 0, y: 0 })
 
 	const onPointerDown = useCallback(
@@ -91,7 +93,14 @@ export const useDrag = (options: UseDragOptions) => {
 				lastVelocityRef.current = { x: 0, y: 0 }
 			}
 		},
-		[isMoving, offsetPosition.x, offsetPosition.y, onEnd, setIsMoving, setOffsetPosition],
+		[
+			isMoving,
+			offsetPosition.x,
+			offsetPosition.y,
+			onEnd,
+			setIsMoving,
+			setOffsetPosition,
+		],
 	)
 
 	const onPointerUp = useMemo(() => handleEnd(false), [handleEnd])
@@ -123,7 +132,11 @@ export const useDrag = (options: UseDragOptions) => {
 					}
 				}
 			}
-			lastMoveRef.current = { time: now, x: newOffsetPosition.x, y: newOffsetPosition.y }
+			lastMoveRef.current = {
+				time: now,
+				x: newOffsetPosition.x,
+				y: newOffsetPosition.y,
+			}
 			setOffsetPosition(newOffsetPosition)
 		}
 	}, [isMoving, setOffsetPosition])
