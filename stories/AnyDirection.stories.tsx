@@ -33,7 +33,7 @@ const AnyDirection = () => {
 
 	return (
 		<div className="any-direction-canvas">
-			<pre className="any-direction-readout">{`x: ${Math.round(x)}\ny: ${Math.round(y)}\nvx: ${velocity.x.toFixed(2)}\nvy: ${velocity.y.toFixed(2)}`}</pre>
+			<pre className="any-direction-readout">{`x: ${Math.round(x)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(velocity.y)}`}</pre>
 			<button
 				className="draggable"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}

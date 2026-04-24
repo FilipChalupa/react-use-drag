@@ -77,7 +77,7 @@ const App = () => {
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per millisecond. |
+| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second. |
 | `onStart` | `() => void` | Optional. Called when the dragging interaction starts. |
 | `onEnd` | `(position: Position) => void` | Optional. Called when the dragging interaction ends. Receives final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`. |
 
@@ -87,7 +87,7 @@ const App = () => {
 | :--- | :--- | :--- |
 | `x` | `number` | Pixels relative to the drag start position. |
 | `y` | `number` | Pixels relative to the drag start position. |
-| `velocity` | `{ x: number; y: number }` | Current drag velocity in pixels per millisecond. |
+| `velocity` | `{ x: number; y: number }` | Current drag velocity in pixels per second. |
 
 #### Return Value
 

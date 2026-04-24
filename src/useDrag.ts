@@ -8,9 +8,9 @@ import {
 } from 'react'
 
 export interface Velocity {
-	/** Pixels per millisecond. */
+	/** Pixels per second. */
 	x: number
-	/** Pixels per millisecond. */
+	/** Pixels per second. */
 	y: number
 }
 
@@ -19,7 +19,7 @@ export interface Position {
 	x: number
 	/** Pixels relative to the drag start position. */
 	y: number
-	/** Current drag velocity in pixels per millisecond. */
+	/** Current drag velocity in pixels per second. */
 	velocity: Velocity
 }
 
@@ -118,8 +118,8 @@ export const useDrag = (options: UseDragOptions) => {
 				const dt = now - lastMoveRef.current.time
 				if (dt > 0) {
 					lastVelocityRef.current = {
-						x: (newOffsetPosition.x - lastMoveRef.current.x) / dt,
-						y: (newOffsetPosition.y - lastMoveRef.current.y) / dt,
+						x: ((newOffsetPosition.x - lastMoveRef.current.x) / dt) * 1000,
+						y: ((newOffsetPosition.y - lastMoveRef.current.y) / dt) * 1000,
 					}
 				}
 			}
