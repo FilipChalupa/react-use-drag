@@ -9,6 +9,7 @@
 	"scripts": {
 		"start": "rollup -c -w",
 		"build": "rollup -c",
+		"dev": "npm run storybook",
 		"prepare": "npm run build",
 		"lint": "eslint .",
 		"type-check": "tsc --noEmit",
