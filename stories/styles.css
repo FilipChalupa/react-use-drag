@@ -52,3 +52,7 @@
 .resize button:last-child {
 	grid-column: -1;
 }
+
+button {
+	touch-action: none;
+}
