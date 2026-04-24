@@ -43,17 +43,19 @@ const HorizontalResize = () => {
 	})
 
 	return (
-		<div
-			className="resize"
-			style={
-				{
-					'--left': `${limitLeft(left, leftOffset, right)}px`,
-					'--right': `${limitRight(right, rightOffset, left)}px`,
-				} as React.CSSProperties
-			}
-		>
-			<button {...leftElementProps}>←</button>
-			<button {...rightElementProps}>→</button>
+		<div className="resize-wrapper">
+			<div
+				className="resize"
+				style={
+					{
+						'--left': `${limitLeft(left, leftOffset, right)}px`,
+						'--right': `${limitRight(right, rightOffset, left)}px`,
+					} as React.CSSProperties
+				}
+			>
+				<button {...leftElementProps}>←</button>
+				<button {...rightElementProps}>→</button>
+			</div>
 		</div>
 	)
 }
