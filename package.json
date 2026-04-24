@@ -11,7 +11,9 @@
 		"build": "rollup -c",
 		"prepare": "npm run build",
 		"lint": "eslint .",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build"
 	},
 	"repository": {
 		"type": "git",
@@ -33,20 +35,25 @@
 		"@eslint/js": "^9.39.3",
 		"@rollup/plugin-commonjs": "^25.0.7",
 		"@rollup/plugin-node-resolve": "^15.2.3",
+		"@storybook/react-vite": "^10.3.5",
 		"@types/react": "^18.0.10",
+		"@vitejs/plugin-react": "^6.0.1",
 		"eslint": "^9.39.3",
 		"eslint-config-prettier": "^9.1.2",
 		"eslint-plugin-react": "^7.37.5",
 		"eslint-plugin-react-hooks": "^5.2.0",
 		"prettier": "^3.0.3",
-		"react": "^18.1.0",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5",
 		"rollup": "^4.2.0",
 		"rollup-plugin-delete": "^2.0.0",
 		"rollup-plugin-peer-deps-external": "^2.2.4",
 		"rollup-plugin-typescript2": "^0.36.0",
+		"storybook": "^10.3.5",
 		"typescript": "^5.2.2",
 		"typescript-eslint": "^8.56.0",
-		"typescript-plugin-css-modules": "^5.0.2"
+		"typescript-plugin-css-modules": "^5.0.2",
+		"vite": "^8.0.10"
 	},
 	"peerDependencies": {
 		"react": "18 || 19"
