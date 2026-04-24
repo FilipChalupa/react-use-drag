@@ -2,7 +2,7 @@
 
 Drag interactions made easier. Lightweight, React hook-based, and powered by Pointer Events for seamless mouse and touch support.
 
-Try interactive [CodeSandbox demo](https://codesandbox.io/p/sandbox/react-use-drag-trjpqp?file=%2Fsrc%2FApp.js).
+[Storybook demo](https://filipchalupa.cz/react-use-drag/).
 
 ![UI example](https://raw.githubusercontent.com/FilipChalupa/react-use-drag/HEAD/screencast.gif)
 
@@ -58,8 +58,10 @@ const App = () => {
 		<button
 			className="draggable"
 			style={{
-				transform: `translate(${position.x + positionOffset.x}px, ${position.y + positionOffset.y}px)`,
-				touchAction: 'none' // Recommended for mobile support
+				transform: `translate(${position.x + positionOffset.x}px, ${
+					position.y + positionOffset.y
+				}px)`,
+				touchAction: 'none', // Recommended for mobile support
 			}}
 			{...elementProps}
 		>
@@ -75,28 +77,28 @@ const App = () => {
 
 #### Options
 
-| Property | Type | Description |
-| :--- | :--- | :--- |
+| Property                   | Type                           | Description                                                                                                                                                                                            |
+| :------------------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second. |
-| `onStart` | `() => void` | Optional. Called when the dragging interaction starts. |
-| `onEnd` | `(position: Position) => void` | Optional. Called when the dragging interaction ends. Receives final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`. |
+| `onStart`                  | `() => void`                   | Optional. Called when the dragging interaction starts.                                                                                                                                                 |
+| `onEnd`                    | `(position: Position) => void` | Optional. Called when the dragging interaction ends. Receives final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`.                                                  |
 
 #### `Position`
 
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `x` | `number` | Pixels relative to the drag start position. |
-| `y` | `number` | Pixels relative to the drag start position. |
+| Property   | Type                       | Description                                 |
+| :--------- | :------------------------- | :------------------------------------------ |
+| `x`        | `number`                   | Pixels relative to the drag start position. |
+| `y`        | `number`                   | Pixels relative to the drag start position. |
 | `velocity` | `{ x: number; y: number }` | Current drag velocity in pixels per second. |
 
 #### Return Value
 
 An object containing:
 
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `isMoving` | `boolean` | `true` if a drag interaction is currently active. |
-| `elementProps` | `object` | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, and `onPointerCancel`. |
+| Property       | Type      | Description                                                                                                                  |
+| :------------- | :-------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `isMoving`     | `boolean` | `true` if a drag interaction is currently active.                                                                            |
+| `elementProps` | `object`  | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, and `onPointerCancel`. |
 
 ## Features
 
