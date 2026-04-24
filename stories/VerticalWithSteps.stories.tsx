@@ -43,8 +43,15 @@ const VerticalWithSteps = () => {
 const meta: Meta<typeof VerticalWithSteps> = {
 	title: 'useDrag/Vertical with Steps',
 	component: VerticalWithSteps,
+	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
+		docs: {
+			description: {
+				component:
+					'Drag the button up or down. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Horizontal movement is ignored.',
+			},
+		},
 	},
 }
 

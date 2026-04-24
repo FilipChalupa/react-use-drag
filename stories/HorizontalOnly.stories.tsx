@@ -36,8 +36,15 @@ const HorizontalOnly = () => {
 const meta: Meta<typeof HorizontalOnly> = {
 	title: 'useDrag/Horizontal Only',
 	component: HorizontalOnly,
+	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
+		docs: {
+			description: {
+				component:
+					'Drag the button left or right. Vertical movement is ignored — only the `x` value from `onRelativePositionChange` is applied.',
+			},
+		},
 	},
 }
 

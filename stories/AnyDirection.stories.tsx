@@ -45,8 +45,15 @@ const AnyDirection = () => {
 const meta: Meta<typeof AnyDirection> = {
 	title: 'useDrag/Any Direction',
 	component: AnyDirection,
+	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
+		docs: {
+			description: {
+				component:
+					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `isMoving` flag.',
+			},
+		},
 	},
 }
 

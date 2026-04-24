@@ -63,8 +63,15 @@ const HorizontalResize = () => {
 const meta: Meta<typeof HorizontalResize> = {
 	title: 'useDrag/Horizontal Resize',
 	component: HorizontalResize,
+	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
+		docs: {
+			description: {
+				component:
+					'Two independent drag handles resize a box. The ← handle extends the left edge, the → handle extends the right edge. Neither handle can cross the other — `Math.min`/`Math.max` clamps keep them apart. Each handle uses its own `useDrag` instance.',
+			},
+		},
 	},
 }
 
