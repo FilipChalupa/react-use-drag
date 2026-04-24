@@ -46,15 +46,30 @@ export interface UseDragOptions {
  * })
  * return <div {...elementProps} style={{ touchAction: 'none' }} />
  */
+
+const velocityResetDelayInMilliseconds = 100 // ms without movement before velocity drops to zero
+
 export const useDrag = (options: UseDragOptions) => {
 	const { onRelativePositionChange, onStart, onEnd } = options
 	const [isMoving, setIsMoving] = useState(false)
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
+	const [velocity, setVelocity] = useState<Velocity>({ x: 0, y: 0 })
 	const lastMoveRef = useRef<{ time: number; x: number; y: number } | null>(
 		null,
 	)
-	const lastVelocityRef = useRef<Velocity>({ x: 0, y: 0 })
+	const velocityResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const cancelVelocityReset = useCallback(() => {
+		if (velocityResetRef.current !== null) {
+			clearTimeout(velocityResetRef.current)
+			velocityResetRef.current = null
+		}
+	}, [])
+
+	useEffect(() => {
+		return cancelVelocityReset
+	}, [cancelVelocityReset])
 
 	const onPointerDown = useCallback(
 		(event: PointerEvent<HTMLElement>) => {
@@ -66,12 +81,13 @@ export const useDrag = (options: UseDragOptions) => {
 				scrollY: window.scrollY, // @TODO: handle any parent scroll
 			}
 			event.currentTarget.setPointerCapture(event.pointerId)
+			cancelVelocityReset()
 			lastMoveRef.current = null
-			lastVelocityRef.current = { x: 0, y: 0 }
+			setVelocity({ x: 0, y: 0 })
 			setIsMoving(true)
 			onStart?.()
 		},
-		[onStart, setIsMoving],
+		[onStart, cancelVelocityReset],
 	)
 
 	const handleEnd = useCallback(
@@ -81,25 +97,26 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			return (event: PointerEvent<HTMLElement>) => {
 				event.preventDefault()
+				cancelVelocityReset()
 				setIsMoving(false)
 				event.currentTarget.releasePointerCapture(event.pointerId)
 				onEnd?.({
 					x: byCancellation ? 0 : offsetPosition.x,
 					y: byCancellation ? 0 : offsetPosition.y,
-					velocity: byCancellation ? { x: 0, y: 0 } : lastVelocityRef.current,
+					velocity: byCancellation ? { x: 0, y: 0 } : velocity,
 				})
 				setOffsetPosition({ x: 0, y: 0 })
+				setVelocity({ x: 0, y: 0 })
 				lastMoveRef.current = null
-				lastVelocityRef.current = { x: 0, y: 0 }
 			}
 		},
 		[
 			isMoving,
 			offsetPosition.x,
 			offsetPosition.y,
+			velocity,
 			onEnd,
-			setIsMoving,
-			setOffsetPosition,
+			cancelVelocityReset,
 		],
 	)
 
@@ -126,10 +143,16 @@ export const useDrag = (options: UseDragOptions) => {
 			if (lastMoveRef.current !== null) {
 				const dt = now - lastMoveRef.current.time
 				if (dt > 0) {
-					lastVelocityRef.current = {
+					const newVelocity = {
 						x: ((newOffsetPosition.x - lastMoveRef.current.x) / dt) * 1000,
 						y: ((newOffsetPosition.y - lastMoveRef.current.y) / dt) * 1000,
 					}
+					setVelocity(newVelocity)
+					cancelVelocityReset()
+					velocityResetRef.current = setTimeout(() => {
+						setVelocity({ x: 0, y: 0 })
+						velocityResetRef.current = null
+					}, velocityResetDelayInMilliseconds)
 				}
 			}
 			lastMoveRef.current = {
@@ -139,15 +162,15 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			setOffsetPosition(newOffsetPosition)
 		}
-	}, [isMoving, setOffsetPosition])
+	}, [isMoving, cancelVelocityReset])
 
 	useEffect(() => {
 		onRelativePositionChange({
 			x: offsetPosition.x,
 			y: offsetPosition.y,
-			velocity: lastVelocityRef.current,
+			velocity,
 		})
-	}, [offsetPosition.x, offsetPosition.y, onRelativePositionChange])
+	}, [offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
 
 	const elementProps = useMemo(
 		() => ({

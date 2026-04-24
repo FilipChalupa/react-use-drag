@@ -7,15 +7,24 @@ const AnyDirection = () => {
 	const [position, setPosition] = useState({ x: 0, y: 0 })
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
 	const [velocity, setVelocity] = useState({ x: 0, y: 0 })
-	const onRelativePositionChange = useCallback(({ x, y, velocity }: Position) => {
-		setPositionOffset({ x, y })
-		setVelocity(velocity)
-	}, [])
+	const onRelativePositionChange = useCallback(
+		({ x, y, velocity }: Position) => {
+			setPositionOffset({ x, y })
+			setVelocity(velocity)
+		},
+		[],
+	)
 	const onStart = useCallback(() => {
 		console.log('Dragging has started')
 	}, [])
-	const onEnd = useCallback(({ x, y }: Position) => {
-		console.log('Dragging has ended')
+	const onEnd = useCallback(({ x, y, velocity }: Position) => {
+		console.log(
+			'Dragging has ended at position',
+			{ x, y },
+			'and velocity',
+			velocity,
+			'px/s',
+		)
 		setPosition((position) => ({
 			x: position.x + x,
 			y: position.y + y,
@@ -33,7 +42,11 @@ const AnyDirection = () => {
 
 	return (
 		<div className="any-direction-canvas">
-			<pre className="any-direction-readout">{`x: ${Math.round(x)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(velocity.y)}`}</pre>
+			<pre className="any-direction-readout">{`x: ${Math.round(
+				x,
+			)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(
+				velocity.y,
+			)}`}</pre>
 			<button
 				className="draggable"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
