@@ -10,11 +10,11 @@ const VerticalWithSteps = () => {
 	const stepSize = 50
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
-	const onRelativePositionChange = useCallback((_x: number, y: number) => {
+	const onRelativePositionChange = useCallback(({ y }: { y: number }) => {
 		setPositionOffset(y)
 	}, [])
 	const onEnd = useCallback(
-		(_x: number, y: number) => {
+		({ y }: { y: number }) => {
 			setPosition((position) => stepped(position, y, stepSize))
 			setPositionOffset(0)
 		},

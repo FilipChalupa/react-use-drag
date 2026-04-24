@@ -13,21 +13,21 @@ const HorizontalResize = () => {
 	const [right, setRight] = useState(0)
 	const [leftOffset, setLeftOffset] = useState(0)
 	const [rightOffset, setRightOffset] = useState(0)
-	const onRelativeLeftChange = useCallback((x: number) => {
+	const onRelativeLeftChange = useCallback(({ x }: { x: number }) => {
 		setLeftOffset(x)
 	}, [])
-	const onRelativeRightChange = useCallback((x: number) => {
+	const onRelativeRightChange = useCallback(({ x }: { x: number }) => {
 		setRightOffset(x)
 	}, [])
 	const onLeftEnd = useCallback(
-		(x: number) => {
+		({ x }: { x: number }) => {
 			setLeft((position) => limitLeft(position, x, right))
 			setLeftOffset(0)
 		},
 		[right],
 	)
 	const onRightEnd = useCallback(
-		(x: number) => {
+		({ x }: { x: number }) => {
 			setRight((position) => limitRight(position, x, left))
 			setRightOffset(0)
 		},

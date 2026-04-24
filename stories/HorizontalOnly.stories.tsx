@@ -6,10 +6,10 @@ import './styles.css'
 const HorizontalOnly = () => {
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
-	const onRelativePositionChange = useCallback((x: number) => {
+	const onRelativePositionChange = useCallback(({ x }: { x: number }) => {
 		setPositionOffset(x)
 	}, [])
-	const onEnd = useCallback((x: number) => {
+	const onEnd = useCallback(({ x }: { x: number }) => {
 		setPosition((position) => position + x)
 		setPositionOffset(0)
 	}, [])

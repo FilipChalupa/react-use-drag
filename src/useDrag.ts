@@ -10,13 +10,18 @@ import {
 /**
  * Options for the useDrag hook.
  */
+export interface Position {
+	x: number
+	y: number
+}
+
 export interface UseDragOptions {
 	/** Called when the position changes during dragging. x and y are relative to the start position. */
-	onRelativePositionChange: (x: number, y: number) => void
+	onRelativePositionChange: (position: Position) => void
 	/** Optional. Called when the dragging interaction starts. */
 	onStart?: () => void
-	/** Optional. Called when the dragging interaction ends. Receives final relative x and y. */
-	onEnd?: (x: number, y: number) => void
+	/** Optional. Called when the dragging interaction ends. Receives final relative position. */
+	onEnd?: (position: Position) => void
 }
 
 /**
@@ -29,7 +34,7 @@ export interface UseDragOptions {
  * 
  * @example
  * const { elementProps, isMoving } = useDrag({
- *   onRelativePositionChange: (x, y) => console.log('Offset:', x, y),
+ *   onRelativePositionChange: ({ x, y }) => console.log('Offset:', x, y),
  * })
  * return <div {...elementProps} style={{ touchAction: 'none' }} />
  */
@@ -64,10 +69,10 @@ export const useDrag = (options: UseDragOptions) => {
 				event.preventDefault()
 				setIsMoving(false)
 				event.currentTarget.releasePointerCapture(event.pointerId)
-				onEnd?.(
-					byCancellation ? 0 : offsetPosition.x,
-					byCancellation ? 0 : offsetPosition.y,
-				)
+				onEnd?.({
+					x: byCancellation ? 0 : offsetPosition.x,
+					y: byCancellation ? 0 : offsetPosition.y,
+				})
 				setOffsetPosition({ x: 0, y: 0 })
 			}
 		},
@@ -98,7 +103,7 @@ export const useDrag = (options: UseDragOptions) => {
 	}, [isMoving, setOffsetPosition])
 
 	useEffect(() => {
-		onRelativePositionChange(offsetPosition.x, offsetPosition.y)
+		onRelativePositionChange({ x: offsetPosition.x, y: offsetPosition.y })
 	}, [offsetPosition.x, offsetPosition.y, onRelativePositionChange])
 
 	const elementProps = useMemo(

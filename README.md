@@ -32,7 +32,7 @@ const App = () => {
 	const [position, setPosition] = useState({ x: 0, y: 0 })
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
 
-	const onRelativePositionChange = useCallback((x, y) => {
+	const onRelativePositionChange = useCallback(({ x, y }) => {
 		setPositionOffset({ x, y })
 	}, [])
 
@@ -40,7 +40,7 @@ const App = () => {
 		console.log('Dragging has started')
 	}, [])
 
-	const onEnd = useCallback((x, y) => {
+	const onEnd = useCallback(({ x, y }) => {
 		setPosition((pos) => ({
 			x: pos.x + x,
 			y: pos.y + y,
@@ -77,9 +77,9 @@ const App = () => {
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `onRelativePositionChange` | `(x: number, y: number) => void` | **Required.** Called when the position changes during dragging. `x` and `y` are relative to the start position. |
+| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging. `position.x` and `position.y` are relative to the start position. |
 | `onStart` | `() => void` | Optional. Called when the dragging interaction starts. |
-| `onEnd` | `(x: number, y: number) => void` | Optional. Called when the dragging interaction ends. Receives final relative `x` and `y`. |
+| `onEnd` | `(position: Position) => void` | Optional. Called when the dragging interaction ends. Receives final relative position. |
 
 #### Return Value
 

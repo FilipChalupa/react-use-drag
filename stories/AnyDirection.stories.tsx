@@ -6,13 +6,13 @@ import './styles.css'
 const AnyDirection = () => {
 	const [position, setPosition] = useState({ x: 0, y: 0 })
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
-	const onRelativePositionChange = useCallback((x: number, y: number) => {
+	const onRelativePositionChange = useCallback(({ x, y }: { x: number; y: number }) => {
 		setPositionOffset({ x, y })
 	}, [])
 	const onStart = useCallback(() => {
 		console.log('Dragging has started')
 	}, [])
-	const onEnd = useCallback((x: number, y: number) => {
+	const onEnd = useCallback(({ x, y }: { x: number; y: number }) => {
 		console.log('Dragging has ended')
 		setPosition((position) => ({
 			x: position.x + x,
