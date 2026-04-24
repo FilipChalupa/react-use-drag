@@ -1,18 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import { useDrag } from '../src/index'
+import { useDrag, type Position } from '../src/index'
 import './styles.css'
 
 const AnyDirection = () => {
 	const [position, setPosition] = useState({ x: 0, y: 0 })
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
-	const onRelativePositionChange = useCallback(({ x, y }: { x: number; y: number }) => {
+	const onRelativePositionChange = useCallback(({ x, y }: Position) => {
 		setPositionOffset({ x, y })
 	}, [])
 	const onStart = useCallback(() => {
 		console.log('Dragging has started')
 	}, [])
-	const onEnd = useCallback(({ x, y }: { x: number; y: number }) => {
+	const onEnd = useCallback(({ x, y }: Position) => {
 		console.log('Dragging has ended')
 		setPosition((position) => ({
 			x: position.x + x,

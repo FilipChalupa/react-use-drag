@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import { useDrag } from '../src/index'
+import { useDrag, type Position } from '../src/index'
 import './styles.css'
 
 const limitLeft = (left: number, leftOffset: number, right: number) =>
@@ -13,21 +13,21 @@ const HorizontalResize = () => {
 	const [right, setRight] = useState(0)
 	const [leftOffset, setLeftOffset] = useState(0)
 	const [rightOffset, setRightOffset] = useState(0)
-	const onRelativeLeftChange = useCallback(({ x }: { x: number }) => {
+	const onRelativeLeftChange = useCallback(({ x }: Position) => {
 		setLeftOffset(x)
 	}, [])
-	const onRelativeRightChange = useCallback(({ x }: { x: number }) => {
+	const onRelativeRightChange = useCallback(({ x }: Position) => {
 		setRightOffset(x)
 	}, [])
 	const onLeftEnd = useCallback(
-		({ x }: { x: number }) => {
+		({ x }: Position) => {
 			setLeft((position) => limitLeft(position, x, right))
 			setLeftOffset(0)
 		},
 		[right],
 	)
 	const onRightEnd = useCallback(
-		({ x }: { x: number }) => {
+		({ x }: Position) => {
 			setRight((position) => limitRight(position, x, left))
 			setRightOffset(0)
 		},
