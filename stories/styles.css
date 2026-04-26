@@ -56,3 +56,13 @@
 button {
 	touch-action: none;
 }
+
+.snap-point {
+	position: absolute;
+	width: 1.5rem;
+	height: 1.5rem;
+	border: 2px dashed #aaa;
+	border-radius: 50%;
+	pointer-events: none;
+	translate: var(--x, 0) var(--y, 0);
+}

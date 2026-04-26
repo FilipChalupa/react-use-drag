@@ -48,7 +48,7 @@ const App = () => {
 		setPositionOffset({ x: 0, y: 0 })
 	}, [])
 
-	const { elementProps, isMoving } = useDrag({
+	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
 		onStart,
 		onEnd,
@@ -65,7 +65,7 @@ const App = () => {
 			}}
 			{...elementProps}
 		>
-			{isMoving ? '🚶' : '🧍'}
+			{state === 'resting' ? '🧍' : '🚶'}
 		</button>
 	)
 }
@@ -77,11 +77,13 @@ const App = () => {
 
 #### Options
 
-| Property                   | Type                           | Description                                                                                                                                                                                            |
-| :------------------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second. |
-| `onStart`                  | `() => void`                   | Optional. Called when the dragging interaction starts.                                                                                                                                                 |
-| `onEnd`                    | `(position: Position) => void` | Optional. Called when the dragging interaction ends. Receives final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`.                                                  |
+| Property                   | Type                           | Description                                                                                                                                                                                                                                                              |
+| :------------------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging or coasting. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second.                                                       |
+| `onStart`                  | `() => void`                   | Optional. Called when the dragging interaction starts.                                                                                                                                                                                                                   |
+| `onEnd`                    | `(position: Position) => void` | Optional. Called when the interaction fully ends. With `inertia` or `snapPoints` this fires only after the coasting animation settles. Receives the final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`.                              |
+| `inertia`                  | `boolean`                      | Optional. When `true`, the element keeps moving after release with friction-based deceleration until it settles.                                                                                                                                                         |
+| `snapPoints`               | `Position[]`                   | Optional. Snap targets in the same coordinate space as the relative position. On release the snap point closest to the inertia projection is chosen. With `inertia` the position springs to the target absorbing release velocity; without `inertia` it teleports there. |
 
 #### `Position`
 
@@ -95,10 +97,10 @@ const App = () => {
 
 An object containing:
 
-| Property       | Type      | Description                                                                                                                  |
-| :------------- | :-------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| `isMoving`     | `boolean` | `true` if a drag interaction is currently active.                                                                            |
-| `elementProps` | `object`  | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, and `onPointerCancel`. |
+| Property       | Type                                    | Description                                                                                                                                                                                                |
+| :------------- | :-------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`        | `'resting' \| 'dragging' \| 'coasting'` | `'dragging'` while the user is interacting, `'coasting'` while an inertia or snap animation is settling, `'resting'` otherwise. The `'coasting'` value only appears when `inertia` or `snapPoints` is set. |
+| `elementProps` | `object`                                | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, and `onPointerCancel`.                                                                               |
 
 ## Features
 

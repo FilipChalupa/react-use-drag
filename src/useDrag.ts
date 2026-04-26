@@ -26,13 +26,31 @@ export interface PositionWithVelocity extends Position {
 	velocity: Velocity
 }
 
+export type DragState = 'resting' | 'dragging' | 'coasting'
+
 export interface UseDragOptions {
-	/** Called when the position changes during dragging. Position is relative to the start. */
+	/** Called when the position changes during dragging or coasting. Position is relative to the start. */
 	onRelativePositionChange: (position: PositionWithVelocity) => void
 	/** Optional. Called when the dragging interaction starts. */
 	onStart?: () => void
-	/** Optional. Called when the dragging interaction ends. Receives final relative position. On cancellation x, y and velocity are 0. */
+	/**
+	 * Optional. Called when the interaction fully ends. With `inertia` or `snapPoints`
+	 * this fires only after the coasting animation settles. Receives the final
+	 * relative position. On cancellation x, y and velocity are 0. The final snap
+	 * target is delivered through this callback — `onRelativePositionChange` may
+	 * not emit it, because the hook resets its internal offset in the same React
+	 * batch.
+	 */
 	onEnd?: (position: PositionWithVelocity) => void
+	/** Optional. When true, the element keeps moving after release with friction-based deceleration until it settles. */
+	inertia?: boolean
+	/**
+	 * Optional. Snap targets in the same coordinate space as the relative position.
+	 * On release, the snap point closest to the inertia projection is chosen. With
+	 * `inertia` the position springs to the target absorbing the release velocity;
+	 * without `inertia` it teleports there immediately.
+	 */
+	snapPoints?: Position[]
 }
 
 /**
@@ -40,21 +58,64 @@ export interface UseDragOptions {
  *
  * @param options - Configuration options for the drag interaction.
  * @returns An object containing:
- * - `isMoving`: boolean indicating if dragging is active.
+ * - `state`: `'resting' | 'dragging' | 'coasting'`. `'coasting'` only occurs while inertia or snap animation runs.
  * - `elementProps`: props to spread onto the draggable element.
  *
  * @example
- * const { elementProps, isMoving } = useDrag({
+ * const { elementProps, state } = useDrag({
  *   onRelativePositionChange: ({ x, y, velocity }) => console.log('Offset:', x, y, 'Velocity:', velocity),
  * })
  * return <div {...elementProps} style={{ touchAction: 'none' }} />
  */
 
 const velocityResetDelayInMilliseconds = 100 // ms without movement before velocity drops to zero
+const inertiaFrictionPerSecond = 6 // exponent k in v(t) = v0 · e^(-k·t); projected travel = v0 / k
+const settleVelocityThreshold = 20 // px/s; below this on both axes coasting is considered settled
+const snapDistanceThreshold = 0.5 // px; spring is considered settled below this distance from target
+const snapStiffness = 180
+const snapDamping = 2 * Math.sqrt(snapStiffness) // critical damping — never overshoots
+const maximumSnapFrameDeltaSeconds = 0.032 // clamp dt so a backgrounded tab can't blow up the spring
+
+const projectInertiaEndpoint = (
+	start: Position,
+	velocity: Velocity,
+): Position => ({
+	x: start.x + velocity.x / inertiaFrictionPerSecond,
+	y: start.y + velocity.y / inertiaFrictionPerSecond,
+})
+
+const chooseSnapPoint = (
+	projected: Position,
+	points: Position[],
+): Position => {
+	let best = points[0]
+	let bestDistance = Infinity
+	for (const point of points) {
+		const deltaX = point.x - projected.x
+		const deltaY = point.y - projected.y
+		const distance = deltaX * deltaX + deltaY * deltaY
+		if (distance < bestDistance) {
+			bestDistance = distance
+			best = point
+		}
+	}
+	return best
+}
+
+interface CoastingData {
+	startTime: number
+	startPosition: Position
+	startVelocity: Velocity
+	lastPosition: Position
+	lastVelocity: Velocity
+	lastFrameTime: number
+	target: Position | null
+}
 
 export const useDrag = (options: UseDragOptions) => {
-	const { onRelativePositionChange, onStart, onEnd } = options
-	const [isMoving, setIsMoving] = useState(false)
+	const { onRelativePositionChange, onStart, onEnd, inertia, snapPoints } =
+		options
+	const [dragState, setDragState] = useState<DragState>('resting')
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
 	const [velocity, setVelocity] = useState<Velocity>({ x: 0, y: 0 })
@@ -62,6 +123,16 @@ export const useDrag = (options: UseDragOptions) => {
 		null,
 	)
 	const velocityResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const animationFrameRef = useRef<number | null>(null)
+	const coastingStateRef = useRef<CoastingData | null>(null)
+
+	// Latest onEnd kept in a ref so the requestAnimationFrame loop and the
+	// abort-on-grab path always reach the current callback even after an
+	// in-flight coasting animation captured an older closure.
+	const onEndRef = useRef(onEnd)
+	useEffect(() => {
+		onEndRef.current = onEnd
+	}, [onEnd])
 
 	const cancelVelocityReset = useCallback(() => {
 		if (velocityResetRef.current !== null) {
@@ -71,12 +142,176 @@ export const useDrag = (options: UseDragOptions) => {
 	}, [])
 
 	useEffect(() => {
-		return cancelVelocityReset
+		return () => {
+			cancelVelocityReset()
+			if (animationFrameRef.current !== null) {
+				cancelAnimationFrame(animationFrameRef.current)
+				animationFrameRef.current = null
+			}
+			coastingStateRef.current = null
+		}
 	}, [cancelVelocityReset])
+
+	const finishCoasting = useCallback(
+		(position: Position, finalVelocity: Velocity) => {
+			animationFrameRef.current = null
+			coastingStateRef.current = null
+			setDragState('resting')
+			onEndRef.current?.({
+				x: position.x,
+				y: position.y,
+				velocity: finalVelocity,
+			})
+			setOffsetPosition({ x: 0, y: 0 })
+			setVelocity({ x: 0, y: 0 })
+			lastMoveRef.current = null
+		},
+		[],
+	)
+
+	const step = useCallback(
+		(now: number) => {
+			const data = coastingStateRef.current
+			if (!data) {
+				return
+			}
+
+			let nextPosition: Position
+			let nextVelocity: Velocity
+			let done = false
+
+			if (data.target === null) {
+				// Pure inertia — closed-form exponential decay, no integration error.
+				const elapsedSeconds = (now - data.startTime) / 1000
+				const decay = Math.exp(-inertiaFrictionPerSecond * elapsedSeconds)
+				nextVelocity = {
+					x: data.startVelocity.x * decay,
+					y: data.startVelocity.y * decay,
+				}
+				const travelled = (1 - decay) / inertiaFrictionPerSecond
+				nextPosition = {
+					x: data.startPosition.x + data.startVelocity.x * travelled,
+					y: data.startPosition.y + data.startVelocity.y * travelled,
+				}
+				if (
+					Math.abs(nextVelocity.x) < settleVelocityThreshold &&
+					Math.abs(nextVelocity.y) < settleVelocityThreshold
+				) {
+					nextPosition = projectInertiaEndpoint(
+						data.startPosition,
+						data.startVelocity,
+					)
+					nextVelocity = { x: 0, y: 0 }
+					done = true
+				}
+			} else {
+				// Snap with inertia — critically damped spring; absorbs release velocity.
+				const deltaSeconds = Math.min(
+					(now - data.lastFrameTime) / 1000,
+					maximumSnapFrameDeltaSeconds,
+				)
+				const accelerationX =
+					-snapStiffness * (data.lastPosition.x - data.target.x) -
+					snapDamping * data.lastVelocity.x
+				const accelerationY =
+					-snapStiffness * (data.lastPosition.y - data.target.y) -
+					snapDamping * data.lastVelocity.y
+				nextVelocity = {
+					x: data.lastVelocity.x + accelerationX * deltaSeconds,
+					y: data.lastVelocity.y + accelerationY * deltaSeconds,
+				}
+				nextPosition = {
+					x: data.lastPosition.x + nextVelocity.x * deltaSeconds,
+					y: data.lastPosition.y + nextVelocity.y * deltaSeconds,
+				}
+				const distanceX = nextPosition.x - data.target.x
+				const distanceY = nextPosition.y - data.target.y
+				if (
+					Math.hypot(distanceX, distanceY) < snapDistanceThreshold &&
+					Math.abs(nextVelocity.x) < settleVelocityThreshold &&
+					Math.abs(nextVelocity.y) < settleVelocityThreshold
+				) {
+					nextPosition = { x: data.target.x, y: data.target.y }
+					nextVelocity = { x: 0, y: 0 }
+					done = true
+				}
+			}
+
+			data.lastPosition = nextPosition
+			data.lastVelocity = nextVelocity
+			data.lastFrameTime = now
+			setOffsetPosition(nextPosition)
+			setVelocity(nextVelocity)
+
+			if (done) {
+				finishCoasting(nextPosition, nextVelocity)
+			} else {
+				animationFrameRef.current = requestAnimationFrame(step)
+			}
+		},
+		[finishCoasting],
+	)
+
+	const startCoasting = useCallback(
+		(
+			target: Position | null,
+			fromPosition: Position,
+			fromVelocity: Velocity,
+		) => {
+			if (animationFrameRef.current !== null) {
+				cancelAnimationFrame(animationFrameRef.current)
+			}
+			const now = performance.now()
+			coastingStateRef.current = {
+				startTime: now,
+				startPosition: fromPosition,
+				startVelocity: fromVelocity,
+				lastPosition: fromPosition,
+				lastVelocity: fromVelocity,
+				lastFrameTime: now,
+				target,
+			}
+			setDragState('coasting')
+			animationFrameRef.current = requestAnimationFrame(step)
+		},
+		[step],
+	)
+
+	const finishNow = useCallback(
+		(position: Position, finalVelocity: Velocity) => {
+			setDragState('resting')
+			onEndRef.current?.({
+				x: position.x,
+				y: position.y,
+				velocity: finalVelocity,
+			})
+			setOffsetPosition({ x: 0, y: 0 })
+			setVelocity({ x: 0, y: 0 })
+			lastMoveRef.current = null
+		},
+		[],
+	)
 
 	const onPointerDown = useCallback(
 		(event: PointerEvent<HTMLElement>) => {
 			event.preventDefault()
+			// If a coasting animation is in flight, the user has grabbed the element back.
+			// Drop momentum, fire onEnd with the in-flight position, then start a fresh drag.
+			if (animationFrameRef.current !== null) {
+				cancelAnimationFrame(animationFrameRef.current)
+				animationFrameRef.current = null
+				const inFlight = coastingStateRef.current
+				if (inFlight) {
+					onEndRef.current?.({
+						x: inFlight.lastPosition.x,
+						y: inFlight.lastPosition.y,
+						velocity: { x: 0, y: 0 },
+					})
+					coastingStateRef.current = null
+					setOffsetPosition({ x: 0, y: 0 })
+					setVelocity({ x: 0, y: 0 })
+				}
+			}
 			startPosition.current = {
 				x: event.clientX,
 				y: event.clientY,
@@ -87,7 +322,7 @@ export const useDrag = (options: UseDragOptions) => {
 			cancelVelocityReset()
 			lastMoveRef.current = null
 			setVelocity({ x: 0, y: 0 })
-			setIsMoving(true)
+			setDragState('dragging')
 			onStart?.()
 		},
 		[onStart, cancelVelocityReset],
@@ -95,31 +330,65 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
-			if (!isMoving) {
+			if (dragState !== 'dragging') {
 				return undefined
 			}
 			return (event: PointerEvent<HTMLElement>) => {
 				event.preventDefault()
 				cancelVelocityReset()
-				setIsMoving(false)
 				event.currentTarget.releasePointerCapture(event.pointerId)
-				onEnd?.({
-					x: byCancellation ? 0 : offsetPosition.x,
-					y: byCancellation ? 0 : offsetPosition.y,
-					velocity: byCancellation ? { x: 0, y: 0 } : velocity,
-				})
-				setOffsetPosition({ x: 0, y: 0 })
-				setVelocity({ x: 0, y: 0 })
-				lastMoveRef.current = null
+
+				if (byCancellation) {
+					finishNow({ x: 0, y: 0 }, { x: 0, y: 0 })
+					return
+				}
+
+				const useInertia = !!inertia
+				const useSnap = !!snapPoints && snapPoints.length > 0
+
+				if (!useInertia && !useSnap) {
+					finishNow(offsetPosition, velocity)
+					return
+				}
+
+				if (useSnap && !useInertia) {
+					const target = chooseSnapPoint(
+						projectInertiaEndpoint(offsetPosition, velocity),
+						snapPoints,
+					)
+					finishNow(target, { x: 0, y: 0 })
+					return
+				}
+
+				if (
+					useInertia &&
+					!useSnap &&
+					Math.abs(velocity.x) < settleVelocityThreshold &&
+					Math.abs(velocity.y) < settleVelocityThreshold
+				) {
+					finishNow(offsetPosition, velocity)
+					return
+				}
+
+				const target =
+					useSnap && snapPoints
+						? chooseSnapPoint(
+								projectInertiaEndpoint(offsetPosition, velocity),
+								snapPoints,
+							)
+						: null
+				startCoasting(target, offsetPosition, velocity)
 			}
 		},
 		[
-			isMoving,
-			offsetPosition.x,
-			offsetPosition.y,
+			dragState,
+			offsetPosition,
 			velocity,
-			onEnd,
+			inertia,
+			snapPoints,
 			cancelVelocityReset,
+			finishNow,
+			startCoasting,
 		],
 	)
 
@@ -127,7 +396,7 @@ export const useDrag = (options: UseDragOptions) => {
 	const onPointerCancel = useMemo(() => handleEnd(true), [handleEnd])
 
 	const onPointerMove = useMemo(() => {
-		if (!isMoving) {
+		if (dragState !== 'dragging') {
 			return undefined
 		}
 		return (event: PointerEvent<HTMLElement>) => {
@@ -144,11 +413,17 @@ export const useDrag = (options: UseDragOptions) => {
 					(startPosition.current.y + startPosition.current.scrollY),
 			}
 			if (lastMoveRef.current !== null) {
-				const dt = now - lastMoveRef.current.time
-				if (dt > 0) {
+				const deltaMilliseconds = now - lastMoveRef.current.time
+				if (deltaMilliseconds > 0) {
 					const newVelocity = {
-						x: ((newOffsetPosition.x - lastMoveRef.current.x) / dt) * 1000,
-						y: ((newOffsetPosition.y - lastMoveRef.current.y) / dt) * 1000,
+						x:
+							((newOffsetPosition.x - lastMoveRef.current.x) /
+								deltaMilliseconds) *
+							1000,
+						y:
+							((newOffsetPosition.y - lastMoveRef.current.y) /
+								deltaMilliseconds) *
+							1000,
 					}
 					setVelocity(newVelocity)
 					cancelVelocityReset()
@@ -165,7 +440,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			setOffsetPosition(newOffsetPosition)
 		}
-	}, [isMoving, cancelVelocityReset])
+	}, [dragState, cancelVelocityReset])
 
 	useEffect(() => {
 		onRelativePositionChange({
@@ -185,5 +460,8 @@ export const useDrag = (options: UseDragOptions) => {
 		[onPointerDown, onPointerMove, onPointerUp, onPointerCancel],
 	)
 
-	return useMemo(() => ({ isMoving, elementProps }), [isMoving, elementProps])
+	return useMemo(
+		() => ({ state: dragState, elementProps }),
+		[dragState, elementProps],
+	)
 }

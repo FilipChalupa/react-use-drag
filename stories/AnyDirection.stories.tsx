@@ -31,7 +31,7 @@ const AnyDirection = () => {
 		}))
 		setPositionOffset({ x: 0, y: 0 })
 	}, [])
-	const { elementProps, isMoving } = useDrag({
+	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
 		onStart,
 		onEnd,
@@ -52,7 +52,7 @@ const AnyDirection = () => {
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
 				{...elementProps}
 			>
-				{isMoving ? '🚶' : '🧍'}
+				{state === 'resting' ? '🧍' : '🚶'}
 			</button>
 		</div>
 	)
@@ -67,7 +67,7 @@ const meta: Meta<typeof AnyDirection> = {
 		docs: {
 			description: {
 				component:
-					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `isMoving` flag.',
+					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `state` value.',
 			},
 		},
 	},
