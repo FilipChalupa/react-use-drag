@@ -220,13 +220,26 @@ export const useDrag = (options: UseDragOptions) => {
 	} | null>(null)
 	// Set when the hook is taking over native scroll manually (after the arming
 	// verdict said "defer to scroll" and there's a scroll container). Each move
-	// updates `scrollEl.scrollTop`/`scrollLeft` directly. When the gesture pulls
-	// past an edge, the hook transitions to dragging (rubber-band promotion).
+	// updates `scrollEl.scrollTop`/`scrollLeft` directly. Scroll velocity is
+	// tracked so we can hand off to a coasting animation on release.
 	const scrollingStateRef = useRef<{
 		pointerId: number
 		scrollEl: HTMLElement
 		lastClientX: number
 		lastClientY: number
+		lastTime: number
+		velocityX: number
+		velocityY: number
+		velocityResetTimeout: ReturnType<typeof setTimeout> | null
+	} | null>(null)
+	// In-flight scroll inertia animation. Mirrors `coastingStateRef` but applies
+	// exponential-decay velocity to scrollTop/Left instead of offsetPosition.
+	const scrollCoastingRef = useRef<{
+		scrollEl: HTMLElement
+		startTime: number
+		startScrollLeft: number
+		startScrollTop: number
+		startVelocity: Velocity
 	} | null>(null)
 	// Synchronous mirror of dragState so the move handler can detect a fresh
 	// arming → dragging promotion within the same callback (state is async).
@@ -261,7 +274,11 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			coastingStateRef.current = null
 			armingRef.current = null
+			if (scrollingStateRef.current?.velocityResetTimeout) {
+				clearTimeout(scrollingStateRef.current.velocityResetTimeout)
+			}
 			scrollingStateRef.current = null
+			scrollCoastingRef.current = null
 		}
 	}, [cancelVelocityReset])
 
@@ -390,6 +407,62 @@ export const useDrag = (options: UseDragOptions) => {
 		[step, transitionTo],
 	)
 
+	const scrollStep = useCallback((now: number) => {
+		const data = scrollCoastingRef.current
+		if (!data) {
+			return
+		}
+		const elapsedSeconds = (now - data.startTime) / 1000
+		const decay = Math.exp(-inertiaFrictionPerSecond * elapsedSeconds)
+		const velocityX = data.startVelocity.x * decay
+		const velocityY = data.startVelocity.y * decay
+		if (
+			Math.abs(velocityX) < settleVelocityThreshold &&
+			Math.abs(velocityY) < settleVelocityThreshold
+		) {
+			scrollCoastingRef.current = null
+			animationFrameRef.current = null
+			return
+		}
+		const travelled = (1 - decay) / inertiaFrictionPerSecond
+		const targetScrollLeft =
+			data.startScrollLeft + data.startVelocity.x * travelled
+		const targetScrollTop =
+			data.startScrollTop + data.startVelocity.y * travelled
+		const maxScrollLeft = data.scrollEl.scrollWidth - data.scrollEl.clientWidth
+		const maxScrollTop = data.scrollEl.scrollHeight - data.scrollEl.clientHeight
+		const clampedX = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft))
+		const clampedY = Math.max(0, Math.min(maxScrollTop, targetScrollTop))
+		data.scrollEl.scrollLeft = clampedX
+		data.scrollEl.scrollTop = clampedY
+		// Both axes pinned past their edges → no further motion possible, stop.
+		const stuckX = clampedX !== targetScrollLeft
+		const stuckY = clampedY !== targetScrollTop
+		if (stuckX && stuckY) {
+			scrollCoastingRef.current = null
+			animationFrameRef.current = null
+			return
+		}
+		animationFrameRef.current = requestAnimationFrame(scrollStep)
+	}, [])
+
+	const startScrollCoasting = useCallback(
+		(scrollEl: HTMLElement, velocityX: number, velocityY: number) => {
+			if (animationFrameRef.current !== null) {
+				cancelAnimationFrame(animationFrameRef.current)
+			}
+			scrollCoastingRef.current = {
+				scrollEl,
+				startTime: performance.now(),
+				startScrollLeft: scrollEl.scrollLeft,
+				startScrollTop: scrollEl.scrollTop,
+				startVelocity: { x: velocityX, y: velocityY },
+			}
+			animationFrameRef.current = requestAnimationFrame(scrollStep)
+		},
+		[scrollStep],
+	)
+
 	const finishNow = useCallback(
 		(position: Position, finalVelocity: Velocity) => {
 			transitionTo('resting')
@@ -407,14 +480,6 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const onPointerDown = useCallback(
 		(event: PointerEvent<HTMLElement>) => {
-			console.log('[useDrag] pointerdown', {
-				pointerType: event.pointerType,
-				pointerId: event.pointerId,
-				clientX: event.clientX,
-				clientY: event.clientY,
-				currentTarget: (event.currentTarget as Element)?.className,
-				target: (event.target as Element)?.className,
-			})
 			// If a coasting animation is in flight, the user has grabbed the element back.
 			// Drop momentum, fire onEnd with the in-flight position, then start a fresh drag.
 			if (animationFrameRef.current !== null) {
@@ -431,6 +496,8 @@ export const useDrag = (options: UseDragOptions) => {
 					setOffsetPosition({ x: 0, y: 0 })
 					setVelocity({ x: 0, y: 0 })
 				}
+				// Scroll coasting: just halt it, no consumer callbacks (scroll is internal).
+				scrollCoastingRef.current = null
 			}
 			// Discard arming state from any previous gesture that left without
 			// either promotion or a tracked pointerup (e.g. drag off-element).
@@ -454,24 +521,10 @@ export const useDrag = (options: UseDragOptions) => {
 					: null
 
 			if (shouldStart || scrollableAncestor) {
-				console.log('[useDrag] arming', {
-					reason: shouldStart ? 'shouldStart' : 'auto-detected scroll',
-					scrollable: scrollableAncestor
-						? {
-								className: (scrollableAncestor as Element).className,
-								scrollTop: (scrollableAncestor as HTMLElement).scrollTop,
-								scrollLeft: (scrollableAncestor as HTMLElement).scrollLeft,
-								scrollHeight: (scrollableAncestor as HTMLElement)
-									.scrollHeight,
-								clientHeight: (scrollableAncestor as HTMLElement)
-									.clientHeight,
-							}
-						: null,
-				})
 				// Capture the pointer immediately so the browser doesn't steal the
 				// gesture for native scroll/pan before we get a chance to evaluate
 				// it. We don't preventDefault yet — the arming verdict on the first
-				// move decides whether the gesture becomes a drag or is released.
+				// move decides whether the gesture becomes a drag or scroll mode.
 				event.currentTarget.setPointerCapture(event.pointerId)
 				armingRef.current = {
 					pointerId: event.pointerId,
@@ -480,7 +533,6 @@ export const useDrag = (options: UseDragOptions) => {
 				return
 			}
 
-			console.log('[useDrag] immediate drag (no arming)')
 			event.preventDefault()
 			event.currentTarget.setPointerCapture(event.pointerId)
 			transitionTo('dragging')
@@ -492,15 +544,6 @@ export const useDrag = (options: UseDragOptions) => {
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
 			return (event: PointerEvent<HTMLElement>) => {
-				console.log(
-					`[useDrag] ${byCancellation ? 'pointercancel' : 'pointerup'}`,
-					{
-						pointerId: event.pointerId,
-						state: dragStateRef.current,
-						arming: !!armingRef.current,
-						scrolling: !!scrollingStateRef.current,
-					},
-				)
 				// Release happened while still arming → no drag was ever started, just clean up.
 				if (
 					armingRef.current &&
@@ -508,11 +551,24 @@ export const useDrag = (options: UseDragOptions) => {
 				) {
 					armingRef.current = null
 				}
-				// Release while we were manually scrolling → just clean up, no callbacks.
+				// Release while we were manually scrolling. If the gesture left
+				// behind any meaningful velocity (and wasn't cancelled), hand it off
+				// to a scroll-coasting animation so the content keeps gliding.
 				if (
 					scrollingStateRef.current &&
 					event.pointerId === scrollingStateRef.current.pointerId
 				) {
+					const sm = scrollingStateRef.current
+					if (sm.velocityResetTimeout !== null) {
+						clearTimeout(sm.velocityResetTimeout)
+					}
+					if (
+						!byCancellation &&
+						(Math.abs(sm.velocityX) >= settleVelocityThreshold ||
+							Math.abs(sm.velocityY) >= settleVelocityThreshold)
+					) {
+						startScrollCoasting(sm.scrollEl, sm.velocityX, sm.velocityY)
+					}
 					scrollingStateRef.current = null
 				}
 				if (dragStateRef.current !== 'dragging') {
@@ -573,6 +629,7 @@ export const useDrag = (options: UseDragOptions) => {
 			cancelVelocityReset,
 			finishNow,
 			startCoasting,
+			startScrollCoasting,
 		],
 	)
 
@@ -581,8 +638,10 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const onPointerMove = useMemo(() => {
 		return (event: PointerEvent<HTMLElement>) => {
-			// SCROLL MODE: hook is manually scrolling the inner container. Continue
-			// applying deltas; if the gesture pulls past an edge, hand off to drag.
+			// SCROLL MODE: hook is manually scrolling the inner container. Once we
+			// commit to scroll for a gesture, the gesture stays in scroll mode until
+			// pointerup — even if the scroll hits an edge. Drag has to come from a
+			// fresh gesture.
 			if (scrollingStateRef.current) {
 				if (event.pointerId !== scrollingStateRef.current.pointerId) {
 					return
@@ -590,31 +649,32 @@ export const useDrag = (options: UseDragOptions) => {
 				const sm = scrollingStateRef.current
 				const dx = event.clientX - sm.lastClientX
 				const dy = event.clientY - sm.lastClientY
-				const wouldDrag = evaluateScrollEdgeAccept(
-					{ x: dx, y: dy },
-					sm.scrollEl,
-				)
-				if (wouldDrag) {
-					console.log('[useDrag] scroll → drag (edge reached)')
-					scrollingStateRef.current = null
-					startPosition.current = {
-						x: event.clientX,
-						y: event.clientY,
-						scrollX: window.scrollX,
-						scrollY: window.scrollY,
+				event.preventDefault()
+				sm.scrollEl.scrollTop -= dy
+				sm.scrollEl.scrollLeft -= dx
+				const now = performance.now()
+				const deltaMilliseconds = now - sm.lastTime
+				if (deltaMilliseconds > 0) {
+					// Scroll velocity is the negation of the finger velocity (finger
+					// down → scroll up); store it in scroll-position units so the
+					// coasting math can apply it directly to scrollTop/Left.
+					sm.velocityX = (-dx / deltaMilliseconds) * 1000
+					sm.velocityY = (-dy / deltaMilliseconds) * 1000
+					if (sm.velocityResetTimeout !== null) {
+						clearTimeout(sm.velocityResetTimeout)
 					}
-					lastMoveRef.current = null
-					transitionTo('dragging')
-					onStart?.()
-					// fall through to drag-move logic
-				} else {
-					event.preventDefault()
-					sm.scrollEl.scrollTop -= dy
-					sm.scrollEl.scrollLeft -= dx
-					sm.lastClientX = event.clientX
-					sm.lastClientY = event.clientY
-					return
+					sm.velocityResetTimeout = setTimeout(() => {
+						if (scrollingStateRef.current === sm) {
+							sm.velocityX = 0
+							sm.velocityY = 0
+							sm.velocityResetTimeout = null
+						}
+					}, velocityResetDelayInMilliseconds)
 				}
+				sm.lastTime = now
+				sm.lastClientX = event.clientX
+				sm.lastClientY = event.clientY
+				return
 			}
 			// ARMING: first move evaluation — drag, scroll, or release.
 			else if (armingRef.current) {
@@ -634,17 +694,11 @@ export const useDrag = (options: UseDragOptions) => {
 				const accept = shouldStart
 					? shouldStart(delta, { pointerType: event.pointerType })
 					: evaluateScrollEdgeAccept(delta, scrollableAncestor)
-				console.log('[useDrag] arming verdict', {
-					delta,
-					accept,
-					verdictBy: shouldStart ? 'shouldStart' : 'auto-detect',
-				})
 				if (!accept) {
 					if (scrollableAncestor) {
 						// Defer to scroll, but the hook drives it — `touch-action: none`
 						// means the browser won't. Apply the threshold delta as the
 						// initial scroll so the gesture feels continuous.
-						console.log('[useDrag] entering scroll mode')
 						const scrollEl = scrollableAncestor as HTMLElement
 						scrollEl.scrollTop -= deltaY
 						scrollEl.scrollLeft -= deltaX
@@ -653,6 +707,10 @@ export const useDrag = (options: UseDragOptions) => {
 							scrollEl,
 							lastClientX: event.clientX,
 							lastClientY: event.clientY,
+							lastTime: performance.now(),
+							velocityX: 0,
+							velocityY: 0,
+							velocityResetTimeout: null,
 						}
 						armingRef.current = null
 						event.preventDefault()
@@ -664,9 +722,6 @@ export const useDrag = (options: UseDragOptions) => {
 					armingRef.current = null
 					return
 				}
-				console.log('[useDrag] PROMOTED to dragging', {
-					at: { x: event.clientX, y: event.clientY },
-				})
 				// Promote: pointer is already captured (we claimed it on pointerdown
 				// to keep the browser from stealing the gesture). Reset startPosition
 				// to the current point so the drag begins from where the finger is
