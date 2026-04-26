@@ -10,6 +10,7 @@ Drag interactions made easier. Lightweight, React hook-based, and powered by Poi
 
 - [Installation](#installation)
 - [How to use](#how-to-use)
+- [CSS requirements](#css-requirements)
 - [API Reference](#api-reference)
   - [Options](#options)
   - [Return Value](#return-value)
@@ -68,6 +69,47 @@ const App = () => {
 			{state === 'resting' ? '🧍' : '🚶'}
 		</button>
 	)
+}
+```
+
+## CSS requirements
+
+The hook works with native Pointer Events but the browser may try to claim the same gesture for native scrolling/panning. `touch-action` tells the browser to leave the gesture alone.
+
+### Plain drag (no scrollable descendants)
+
+```css
+.draggable {
+	touch-action: none;
+}
+```
+
+Without it, vertical/horizontal swipes get hijacked by the browser as page scroll on touch devices.
+
+### Scroll-aware drag (auto-detect)
+
+When the draggable contains a scrollable descendant (e.g. a card with overflowing content), the hook auto-detects it and switches to a manual scroll mode on touch/pen — the browser must stay out of the way:
+
+```css
+.drag-root {
+	touch-action: none;
+}
+
+.scrollable-descendant {
+	overflow: auto; /* or overflow-y: auto, overflow-x: auto */
+	touch-action: none;
+}
+```
+
+The scrollable descendant needs `overflow: auto` (or `scroll`) so `findScrollableAncestor` recognizes it. Both elements need `touch-action: none` so the browser doesn't dispatch `pointercancel` mid-gesture once it commits to native pan. The hook drives the scroll itself, including momentum on release and a dominant-axis lock for diagonal gestures.
+
+### Custom `shouldStart` without a scrollable subtree
+
+If you provide `shouldStart` and there's no scrollable descendant for the hook to defer to, returning `false` releases the pointer and lets the browser take over — set `touch-action` to whatever native gesture you want as the fallback (`pan-y` for vertical scroll, `pan-x` for horizontal, etc.):
+
+```css
+.drag-root {
+	touch-action: pan-y; /* drag wins for some gestures, native vertical scroll for others */
 }
 ```
 
