@@ -435,8 +435,11 @@ export const useDrag = (options: UseDragOptions) => {
 					: null
 
 			if (shouldStart || scrollableAncestor) {
-				// Defer drag start (no preventDefault, no capture) so native gestures
-				// like scroll can still kick in if the arming verdict says so.
+				// Capture the pointer immediately so the browser doesn't steal the
+				// gesture for native scroll/pan before we get a chance to evaluate
+				// it. We don't preventDefault yet — the arming verdict on the first
+				// move decides whether the gesture becomes a drag or is released.
+				event.currentTarget.setPointerCapture(event.pointerId)
 				armingRef.current = {
 					pointerId: event.pointerId,
 					scrollableAncestor,
@@ -549,12 +552,22 @@ export const useDrag = (options: UseDragOptions) => {
 							armingRef.current.scrollableAncestor,
 						)
 				if (!accept) {
+					// Hand the gesture back so native scroll/whatever can take over.
+					event.currentTarget.releasePointerCapture(event.pointerId)
 					armingRef.current = null
 					return
 				}
-				// Promote: claim the pointer and treat this move as the first drag move.
-				event.currentTarget.setPointerCapture(event.pointerId)
+				// Promote: pointer is already captured (we claimed it on pointerdown
+				// to keep the browser from stealing the gesture). Reset startPosition
+				// to the current point so the drag begins from where the finger is
+				// now, instead of jumping by the threshold pixels we waited out.
 				armingRef.current = null
+				startPosition.current = {
+					x: event.clientX,
+					y: event.clientY,
+					scrollX: window.scrollX,
+					scrollY: window.scrollY,
+				}
 				transitionTo('dragging')
 				onStart?.()
 				// fall through to drag-move logic
