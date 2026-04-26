@@ -138,6 +138,13 @@ interface CoastingData {
 	target: Position | null
 }
 
+// Module-level singleton for nested-useDrag coordination. When a hook claims
+// a gesture (commits to drag or scroll mode), it adds the pointerId here.
+// Other hooks observing the same pointer in their arming branch see the claim
+// and stand down without requiring any context provider or wrapper component.
+// Innermost hooks evaluate first via React's natural pointer-event bubble.
+const claimedPointers = new Set<number>()
+
 const findScrollableAncestor = (
 	start: EventTarget | null,
 	bound: Element,
@@ -249,6 +256,9 @@ export const useDrag = (options: UseDragOptions) => {
 	// Synchronous mirror of dragState so the move handler can detect a fresh
 	// arming → dragging promotion within the same callback (state is async).
 	const dragStateRef = useRef<DragState>('resting')
+	// Tracks the pointerId we registered in `claimedPointers` so we can release
+	// the global claim on pointerup/cancel/unmount without scanning the set.
+	const claimedPointerRef = useRef<number | null>(null)
 
 	// Latest onEnd kept in a ref so the requestAnimationFrame loop and the
 	// abort-on-grab path always reach the current callback even after an
@@ -284,6 +294,11 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			scrollingStateRef.current = null
 			scrollCoastingRef.current = null
+			// Release the global claim so a new gesture isn't blocked.
+			if (claimedPointerRef.current !== null) {
+				claimedPointers.delete(claimedPointerRef.current)
+				claimedPointerRef.current = null
+			}
 		}
 	}, [cancelVelocityReset])
 
@@ -519,38 +534,30 @@ export const useDrag = (options: UseDragOptions) => {
 			setVelocity({ x: 0, y: 0 })
 
 			// Auto-detect a scrollable subtree only when shouldStart isn't provided
-			// and the input is touch/pen — mouse has no scroll-by-drag, so it always
-			// drags immediately.
+			// and the input is touch/pen — mouse has no scroll-by-drag, so the
+			// arming verdict on first move will go straight to drag.
 			const scrollableAncestor =
 				!shouldStart && event.pointerType !== 'mouse'
 					? findScrollableAncestor(event.target, event.currentTarget)
 					: null
 
-			if (shouldStart || scrollableAncestor) {
-				// Capture the pointer immediately. The arming verdict on the first
-				// move decides whether the gesture becomes a drag or enters scroll
-				// mode; we don't preventDefault yet so a sibling tap can still go
-				// through if no movement crosses the threshold.
-				event.currentTarget.setPointerCapture(event.pointerId)
-				armingRef.current = {
-					pointerId: event.pointerId,
-					scrollableAncestor,
-				}
-				return
+			// Always arm — never claim or capture on pointerdown. The first move
+			// runs the arming verdict; if multiple useDrag instances overlap on
+			// the gesture path, the innermost evaluates first via React's natural
+			// pointer-event bubble and the global `claimedPointers` set keeps
+			// outers from also claiming once an inner has committed.
+			armingRef.current = {
+				pointerId: event.pointerId,
+				scrollableAncestor,
 			}
-
-			event.preventDefault()
-			event.currentTarget.setPointerCapture(event.pointerId)
-			transitionTo('dragging')
-			onStart?.()
 		},
-		[onStart, shouldStart, cancelVelocityReset, transitionTo],
+		[shouldStart, cancelVelocityReset],
 	)
 
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
 			return (event: PointerEvent<HTMLElement>) => {
-				// Release happened while still arming → no drag was ever started, just clean up.
+				// Release happened while still arming → no claim was ever made, just clean up.
 				if (
 					armingRef.current &&
 					event.pointerId === armingRef.current.pointerId
@@ -576,6 +583,15 @@ export const useDrag = (options: UseDragOptions) => {
 						startScrollCoasting(sm.scrollEl, sm.velocityX, sm.velocityY)
 					}
 					scrollingStateRef.current = null
+				}
+				// Release any global claim we held so a fresh gesture can run the
+				// arming race from scratch.
+				if (
+					claimedPointerRef.current !== null &&
+					claimedPointerRef.current === event.pointerId
+				) {
+					claimedPointers.delete(claimedPointerRef.current)
+					claimedPointerRef.current = null
 				}
 				if (dragStateRef.current !== 'dragging') {
 					return
@@ -696,6 +712,12 @@ export const useDrag = (options: UseDragOptions) => {
 				if (event.pointerId !== armingRef.current.pointerId) {
 					return
 				}
+				// Some other useDrag (innermost via natural bubble) already claimed
+				// this gesture — stand down without preventDefault or capture.
+				if (claimedPointers.has(event.pointerId)) {
+					armingRef.current = null
+					return
+				}
 				const deltaX = event.clientX - startPosition.current.x
 				const deltaY = event.clientY - startPosition.current.y
 				if (
@@ -721,13 +743,17 @@ export const useDrag = (options: UseDragOptions) => {
 					if (scrollableAncestor) {
 						// Defer to scroll, but the hook drives it — `touch-action: none`
 						// means the browser won't. Apply the threshold delta on the
-						// locked axis only so the gesture feels continuous.
+						// locked axis only so the gesture feels continuous. Claim the
+						// pointer so any outer useDrag stands down.
 						const scrollEl = scrollableAncestor as HTMLElement
 						if (lockedAxis === 'y') {
 							scrollEl.scrollTop -= deltaY
 						} else {
 							scrollEl.scrollLeft -= deltaX
 						}
+						claimedPointers.add(event.pointerId)
+						claimedPointerRef.current = event.pointerId
+						event.currentTarget.setPointerCapture(event.pointerId)
 						scrollingStateRef.current = {
 							pointerId: event.pointerId,
 							scrollEl,
@@ -743,16 +769,17 @@ export const useDrag = (options: UseDragOptions) => {
 						event.preventDefault()
 						return
 					}
-					// No scroll target (pure shouldStart use case) → release for
-					// whatever native behavior the user intended.
-					event.currentTarget.releasePointerCapture(event.pointerId)
+					// No scroll target — release without claiming so the gesture can
+					// bubble to an outer useDrag that may want it.
 					armingRef.current = null
 					return
 				}
-				// Promote: pointer is already captured (we claimed it on pointerdown
-				// to keep the browser from stealing the gesture). Reset startPosition
-				// to the current point so the drag begins from where the finger is
-				// now, instead of jumping by the threshold pixels we waited out.
+				// Drag verdict: claim the pointer (blocks outer useDrags), capture,
+				// and reset startPosition to the current point so the drag begins
+				// from where the finger is now (no jump by the threshold pixels).
+				claimedPointers.add(event.pointerId)
+				claimedPointerRef.current = event.pointerId
+				event.currentTarget.setPointerCapture(event.pointerId)
 				armingRef.current = null
 				startPosition.current = {
 					x: event.clientX,

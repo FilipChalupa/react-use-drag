@@ -56,17 +56,12 @@ const SwipeItem = ({ item, onArchive }: SwipeItemProps) => {
 		[item.id, onArchive],
 	)
 
-	// Horizontal-dominant gestures become item swipes; vertical bubbles up so
-	// the parent's native scroll still scrolls the list. Mouse always swipes.
-	const shouldStart = useCallback(
-		(delta: Position, info: { pointerType: string }) => {
-			if (info.pointerType === 'mouse') {
-				return true
-			}
-			return Math.abs(delta.x) > Math.abs(delta.y)
-		},
-		[],
-	)
+	// Horizontal-dominant gestures become item swipes; otherwise the gesture
+	// bubbles up so the outer sheet's useDrag (scroll mode or sheet drag) gets
+	// a chance via the global nested-useDrag coordinator.
+	const shouldStart = useCallback((delta: Position) => {
+		return Math.abs(delta.x) > Math.abs(delta.y)
+	}, [])
 
 	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
@@ -123,16 +118,23 @@ const BottomSheet = () => {
 			<div
 				className="bottom-sheet"
 				style={{ '--y': `${y}px` } as React.CSSProperties}
+				{...elementProps}
 			>
-				<div className="bottom-sheet-handle" {...elementProps} />
+				<div className="bottom-sheet-handle" />
 				<div className="bottom-sheet-content">
-					{items.map((item) => (
-						<SwipeItem
-							key={item.id}
-							item={item}
-							onArchive={handleArchive}
-						/>
-					))}
+					{items.length > 0 ? (
+						items.map((item) => (
+							<SwipeItem
+								key={item.id}
+								item={item}
+								onArchive={handleArchive}
+							/>
+						))
+					) : (
+						<div className="bottom-sheet-empty">
+							All caught up — drag to close
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
@@ -147,15 +149,17 @@ const meta: Meta<typeof BottomSheet> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component: `A bottom sheet with **nested \`useDrag\` instances**: the sheet itself drags vertically (handle bar at the top), and each row inside swipes horizontally to archive (Apple Mail / Gmail style). The two interactions don't fight each other because each level of the hook is given a different gesture axis via \`touch-action\` and \`shouldStart\`.
+				component: `A bottom sheet with **nested \`useDrag\` instances**: one \`useDrag\` on the whole sheet (auto-detects the scrollable list inside, so it drives both vertical scroll and pull-to-close drag), plus one per row for horizontal swipe-to-archive (Apple Mail / Gmail style). Both levels are spread the natural way — single \`elementProps\` on the wrapper, single \`elementProps\` per row.
 
-Layout:
+The hook itself coordinates the nesting via a small module-level singleton: on \`pointerdown\` no one captures yet; on the first move past the threshold the **innermost hook evaluates first** (React's natural pointer-event bubble order). If the innermost claims the gesture (e.g. row's horizontal \`shouldStart\` returns \`true\`), it captures and outers stand down. If it doesn't claim (vertical on a row), the gesture bubbles to the outer hook, which can then claim itself (scroll mode, or pull-to-close drag at the scroll edge).
 
-- The sheet's \`useDrag\` only sees the handle (\`touch-action: none\`). No scrollable subtree under it, so it drags immediately.
-- The content area is a plain native-scroll list (\`overflow-y: auto\`, \`touch-action: pan-y\`) — the browser handles vertical scroll.
-- Each row has its own \`useDrag\` with a horizontal-dominant \`shouldStart\`. Vertical gestures bubble up to the browser's native scroll; horizontal gestures swipe the row. Releasing past a threshold archives the item.
+Behavior to try:
 
-Trade-off vs the simple \`Scrollable\` story: pulling on the content area no longer drags the whole sheet down — only the handle does. That's the price of letting the row-level \`useDrag\` coexist with native list scroll.
+- Drag the handle bar → sheet drags down.
+- Pull down on the content with items at the very top → sheet drags (rubber-band edge).
+- Scroll the list → vertical gesture on either content padding or a row enters scroll mode.
+- Swipe a row left or right past the threshold → row archives.
+- Archive everything → empty content area still drags the sheet (no scrollable to defer to).
 
 ${sourceLink('BottomSheet.stories.tsx')}`,
 			},

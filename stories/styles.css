@@ -150,6 +150,7 @@ button {
 	display: flex;
 	flex-direction: column;
 	translate: 0 var(--y, 0);
+	touch-action: none;
 }
 
 .bottom-sheet-handle {
@@ -173,8 +174,17 @@ button {
 	flex: 1 1 auto;
 	overflow-y: auto;
 	box-sizing: border-box;
-	touch-action: pan-y;
+	touch-action: none;
 	user-select: none;
+}
+
+.bottom-sheet-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: #888;
+	font-size: 0.875rem;
 }
 
 .swipe-row {
@@ -212,7 +222,7 @@ button {
 	position: relative;
 	background: #fff;
 	padding: 0.75rem 1rem;
-	touch-action: pan-y;
+	touch-action: none;
 	translate: var(--x, 0);
 }
 
