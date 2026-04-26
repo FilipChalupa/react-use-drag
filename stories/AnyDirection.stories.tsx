@@ -42,8 +42,8 @@ const AnyDirection = () => {
 	const y = position.y + positionOffset.y
 
 	return (
-		<div className="any-direction-canvas">
-			<pre className="any-direction-readout">{`x: ${Math.round(
+		<div className="demo-canvas">
+			<pre className="readout">{`x: ${Math.round(
 				x,
 			)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(
 				velocity.y,

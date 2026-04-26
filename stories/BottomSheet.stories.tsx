@@ -114,7 +114,7 @@ const BottomSheet = () => {
 
 	return (
 		<div className="bottom-sheet-canvas">
-			<pre className="bottom-sheet-readout">{`sheet: ${state}`}</pre>
+			<pre className="readout">{`sheet: ${state}`}</pre>
 			<div
 				className="bottom-sheet"
 				style={{ '--y': `${y}px` } as React.CSSProperties}

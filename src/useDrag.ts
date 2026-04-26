@@ -6,6 +6,20 @@ import {
 	useRef,
 	useState,
 } from 'react'
+import {
+	chooseSnapPoint,
+	inertiaFrictionPerSecond,
+	maximumSnapFrameDeltaSeconds,
+	projectInertiaEndpoint,
+	settleVelocityThreshold,
+	snapDamping,
+	snapDistanceThreshold,
+	snapStiffness,
+} from './coastingMath'
+import {
+	evaluateScrollEdgeAccept,
+	findScrollableAncestor,
+} from './scrollHelpers'
 
 export interface Velocity {
 	/** Pixels per second. */
@@ -74,7 +88,7 @@ export interface UseDragOptions {
 	 */
 	shouldStart?: (
 		firstMove: Position,
-		info: { pointerType: string },
+		info: { pointerType: 'mouse' | 'touch' | 'pen' | (string & {}) },
 	) => boolean
 }
 
@@ -94,39 +108,7 @@ export interface UseDragOptions {
  */
 
 const velocityResetDelayInMilliseconds = 100 // ms without movement before velocity drops to zero
-const inertiaFrictionPerSecond = 6 // exponent k in v(t) = v0 · e^(-k·t); projected travel = v0 / k
-const settleVelocityThreshold = 20 // px/s; below this on both axes coasting is considered settled
-const snapDistanceThreshold = 0.5 // px; spring is considered settled below this distance from target
-const snapStiffness = 180
-const snapDamping = 2 * Math.sqrt(snapStiffness) // critical damping — never overshoots
-const maximumSnapFrameDeltaSeconds = 0.032 // clamp dt so a backgrounded tab can't blow up the spring
 const armingMoveThresholdPixels = 5 // minimum movement on either axis before the arming verdict (drag vs scroll) runs
-
-const projectInertiaEndpoint = (
-	start: Position,
-	velocity: Velocity,
-): Position => ({
-	x: start.x + velocity.x / inertiaFrictionPerSecond,
-	y: start.y + velocity.y / inertiaFrictionPerSecond,
-})
-
-const chooseSnapPoint = (
-	projected: Position,
-	points: Position[],
-): Position => {
-	let best = points[0]
-	let bestDistance = Infinity
-	for (const point of points) {
-		const deltaX = point.x - projected.x
-		const deltaY = point.y - projected.y
-		const distance = deltaX * deltaX + deltaY * deltaY
-		if (distance < bestDistance) {
-			bestDistance = distance
-			best = point
-		}
-	}
-	return best
-}
 
 interface CoastingData {
 	startTime: number
@@ -144,61 +126,6 @@ interface CoastingData {
 // and stand down without requiring any context provider or wrapper component.
 // Innermost hooks evaluate first via React's natural pointer-event bubble.
 const claimedPointers = new Set<number>()
-
-const findScrollableAncestor = (
-	start: EventTarget | null,
-	bound: Element,
-): Element | null => {
-	let element = start instanceof Element ? start : null
-	while (element) {
-		const style = window.getComputedStyle(element)
-		const scrollableY =
-			element.scrollHeight > element.clientHeight &&
-			(style.overflowY === 'auto' || style.overflowY === 'scroll')
-		const scrollableX =
-			element.scrollWidth > element.clientWidth &&
-			(style.overflowX === 'auto' || style.overflowX === 'scroll')
-		if (scrollableX || scrollableY) {
-			return element
-		}
-		if (element === bound) {
-			return null
-		}
-		element = element.parentElement
-	}
-	return null
-}
-
-// Default arming verdict when shouldStart isn't supplied: drag when the scroll
-// container has nowhere left to scroll in the gesture's direction (rubber-band
-// edges); otherwise return false so the move handler enters scroll mode.
-const evaluateScrollEdgeAccept = (
-	delta: Position,
-	scrollEl: Element | null,
-): boolean => {
-	if (!scrollEl) {
-		return true
-	}
-	const canScrollUp = scrollEl.scrollTop > 0
-	const canScrollDown =
-		scrollEl.scrollTop < scrollEl.scrollHeight - scrollEl.clientHeight - 1
-	const canScrollLeft = scrollEl.scrollLeft > 0
-	const canScrollRight =
-		scrollEl.scrollLeft < scrollEl.scrollWidth - scrollEl.clientWidth - 1
-	if (delta.y > 0 && canScrollUp) {
-		return false
-	}
-	if (delta.y < 0 && canScrollDown) {
-		return false
-	}
-	if (delta.x > 0 && canScrollLeft) {
-		return false
-	}
-	if (delta.x < 0 && canScrollRight) {
-		return false
-	}
-	return true
-}
 
 export const useDrag = (options: UseDragOptions) => {
 	const {
@@ -526,8 +453,11 @@ export const useDrag = (options: UseDragOptions) => {
 			startPosition.current = {
 				x: event.clientX,
 				y: event.clientY,
-				scrollX: window.scrollX, // @TODO: handle any parent scroll
-				scrollY: window.scrollY, // @TODO: handle any parent scroll
+				// `window.scrollX/Y` only — concurrent scroll on intermediate ancestors
+				// during a drag isn't compensated. Drag callers typically don't
+				// experience this since pointer capture keeps the gesture pinned.
+				scrollX: window.scrollX,
+				scrollY: window.scrollY,
 			}
 			cancelVelocityReset()
 			lastMoveRef.current = null

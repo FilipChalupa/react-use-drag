@@ -4,14 +4,14 @@ import { useDrag, type PositionWithVelocity } from '../src/index'
 import { sourceLink } from './sourceLink'
 import './styles.css'
 
+const stepSize = 50
+
 const stepped = (
 	originalPosition: number,
 	offsetPosition: number,
-	stepSize: number,
 ) => originalPosition + Math.round(offsetPosition / stepSize) * stepSize
 
 const HorizontalWithSteps = () => {
-	const stepSize = 50
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
 	const onRelativePositionChange = useCallback(
@@ -20,13 +20,10 @@ const HorizontalWithSteps = () => {
 		},
 		[],
 	)
-	const onEnd = useCallback(
-		({ x }: PositionWithVelocity) => {
-			setPosition((position) => stepped(position, x, stepSize))
-			setPositionOffset(0)
-		},
-		[stepSize],
-	)
+	const onEnd = useCallback(({ x }: PositionWithVelocity) => {
+		setPosition((position) => stepped(position, x))
+		setPositionOffset(0)
+	}, [])
 	const { elementProps } = useDrag({
 		onRelativePositionChange,
 		onEnd,
@@ -37,7 +34,7 @@ const HorizontalWithSteps = () => {
 			className="draggable"
 			style={
 				{
-					'--x': `${stepped(position, positionOffset, stepSize)}px`,
+					'--x': `${stepped(position, positionOffset)}px`,
 				} as React.CSSProperties
 			}
 			{...elementProps}

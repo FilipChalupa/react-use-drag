@@ -34,8 +34,8 @@ const Scrollable = () => {
 	const y = position.y + positionOffset.y
 
 	return (
-		<div className="scrollable-canvas">
-			<pre className="scrollable-readout">{`state: ${state}`}</pre>
+		<div className="demo-canvas">
+			<pre className="readout">{`state: ${state}`}</pre>
 			<div
 				className="scrollable-card"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}

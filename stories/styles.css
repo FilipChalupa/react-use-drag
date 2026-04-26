@@ -2,7 +2,7 @@ body {
 	font-family: sans-serif;
 }
 
-.any-direction-canvas {
+.demo-canvas {
 	position: relative;
 	width: 100%;
 	min-height: 25rem;
@@ -11,7 +11,7 @@ body {
 	justify-content: center;
 }
 
-.any-direction-readout {
+.readout {
 	position: absolute;
 	top: 1rem;
 	left: 1rem;
@@ -69,26 +69,6 @@ button {
 	translate: var(--x, 0) var(--y, 0);
 }
 
-.scrollable-canvas {
-	position: relative;
-	width: 100%;
-	min-height: 25rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.scrollable-readout {
-	position: absolute;
-	top: 1rem;
-	left: 1rem;
-	margin: 0;
-	font-family: monospace;
-	font-size: 0.875rem;
-	line-height: 1.5;
-	color: #666;
-}
-
 .scrollable-card {
 	width: 280px;
 	height: 320px;
@@ -124,17 +104,6 @@ button {
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
-}
-
-.bottom-sheet-readout {
-	position: absolute;
-	top: 1rem;
-	left: 1rem;
-	margin: 0;
-	font-family: monospace;
-	font-size: 0.875rem;
-	line-height: 1.5;
-	color: #666;
 }
 
 .bottom-sheet {

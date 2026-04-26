@@ -25,6 +25,8 @@ npm install react-use-drag
 
 ## How to use
 
+A minimal drag below. For inertia, snap points, scroll-aware drag, and nested swipe-in-list composition, see the [Storybook demo](https://filipchalupa.cz/react-use-drag/).
+
 ```jsx
 import { useDrag } from 'react-use-drag'
 import { useState, useCallback } from 'react'
@@ -101,7 +103,7 @@ When the draggable contains a scrollable descendant (e.g. a card with overflowin
 }
 ```
 
-The scrollable descendant needs `overflow: auto` (or `scroll`) so `findScrollableAncestor` recognizes it. Both elements need `touch-action: none` so the browser doesn't dispatch `pointercancel` mid-gesture once it commits to native pan. The hook drives the scroll itself, including momentum on release and a dominant-axis lock for diagonal gestures.
+The scrollable descendant needs `overflow: auto` (or `scroll`) so the hook recognizes it when it walks the DOM up from the touch target. Both elements need `touch-action: none` so the browser doesn't dispatch `pointercancel` mid-gesture once it commits to native pan. The hook drives the scroll itself, including momentum on release and a dominant-axis lock for diagonal gestures.
 
 ### Custom `shouldStart` without a scrollable subtree
 
@@ -121,19 +123,24 @@ If you provide `shouldStart` and there's no scrollable descendant for the hook t
 
 | Property                   | Type                           | Description                                                                                                                                                                                                                                                              |
 | :------------------------- | :----------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `onRelativePositionChange` | `(position: Position) => void` | **Required.** Called when the position changes during dragging or coasting. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second.                                                       |
+| `onRelativePositionChange` | `(position: PositionWithVelocity) => void` | **Required.** Called when the position changes during dragging or coasting. `position.x` and `position.y` are relative to the start position. `position.velocity` holds the current velocity in pixels per second.                                                       |
 | `onStart`                  | `() => void`                   | Optional. Called when the dragging interaction starts.                                                                                                                                                                                                                   |
-| `onEnd`                    | `(position: Position) => void` | Optional. Called when the interaction fully ends. With `inertia` or `snapPoints` this fires only after the coasting animation settles. Receives the final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`.                              |
+| `onEnd`                    | `(position: PositionWithVelocity) => void` | Optional. Called when the interaction fully ends. With `inertia` or `snapPoints` this fires only after the coasting animation settles. Receives the final relative position and velocity. On cancellation `x`, `y`, and `velocity` are `0`.                              |
 | `inertia`                  | `boolean`                      | Optional. When `true`, the element keeps moving after release with friction-based deceleration until it settles.                                                                                                                                                         |
-| `snapPoints`               | `Position[]`                   | Optional. Snap targets in the same coordinate space as the relative position. On release the snap point closest to the inertia projection is chosen. With `inertia` the position springs to the target absorbing release velocity; without `inertia` it teleports there. |
-| `shouldStart`              | `(firstMove: Position, info: { pointerType: string }) => boolean` | Optional escape hatch. Evaluated on the first pointermove past a few-pixel threshold. Return `true` to take over the gesture as a drag, `false` to defer it (the hook then either takes over scroll manually if there's a scrollable subtree, or releases the pointer for native behavior). When omitted, the hook auto-detects: on `pointerdown` it walks from the event target up to the drag root looking for a scrollable element. If found and the input is touch/pen, the gesture is held back until the first move; the verdict picks drag (scroll is at the gesture-direction edge) or scroll (otherwise). Mouse always drags immediately. The scrollable element should have `touch-action: none` so the browser doesn't fight the hook for the gesture; the hook drives the scroll itself, including momentum on release and a dominant-axis lock for diagonal gestures. |
+| `snapPoints`               | `Position[]`                   | Optional. Snap targets (`{ x, y }`) in the same coordinate space as the relative position. On release the snap point closest to the inertia projection is chosen. With `inertia` the position springs to the target absorbing release velocity; without `inertia` it teleports there. |
+| `shouldStart`              | `(firstMove: Position, info: { pointerType: 'mouse' \| 'touch' \| 'pen' }) => boolean` | Optional escape hatch. Evaluated on the first pointermove past a few-pixel threshold. Return `true` to take over the gesture as a drag, `false` to defer it (the hook then either takes over scroll manually if there's a scrollable subtree, or releases the pointer for native behavior). When omitted, the hook auto-detects: on `pointerdown` it walks the DOM up from the touch target looking for a scrollable element. If found and the input is touch/pen, the gesture is held back until the first move; the verdict picks drag (scroll is at the gesture-direction edge) or scroll (otherwise). Mouse always drags immediately. The scrollable element should have `touch-action: none` so the browser doesn't fight the hook for the gesture; the hook drives the scroll itself, including momentum on release and a dominant-axis lock for diagonal gestures. |
 
 #### `Position`
 
+| Property | Type     | Description                                 |
+| :------- | :------- | :------------------------------------------ |
+| `x`      | `number` | Pixels relative to the drag start position. |
+| `y`      | `number` | Pixels relative to the drag start position. |
+
+#### `PositionWithVelocity` (extends `Position`)
+
 | Property   | Type                       | Description                                 |
 | :--------- | :------------------------- | :------------------------------------------ |
-| `x`        | `number`                   | Pixels relative to the drag start position. |
-| `y`        | `number`                   | Pixels relative to the drag start position. |
 | `velocity` | `{ x: number; y: number }` | Current drag velocity in pixels per second. |
 
 #### Return Value
@@ -148,8 +155,11 @@ An object containing:
 ## Features
 
 - **Pointer Events:** Works with Mouse, Touch, and Pen out of the box.
+- **Inertia:** Optional friction-based decay continues the drag after release until it settles.
+- **Snap points:** Optional set of targets the position springs to (or teleports to) on release. The chosen point absorbs release velocity for natural-feeling snap.
+- **Scroll-aware:** Auto-detects scrollable descendants and turns vertical/horizontal gestures into native-feeling scroll, with momentum and dominant-axis lock. Pulling past a scroll edge promotes the gesture to a drag (rubber-band).
+- **Nested composition:** Multiple `useDrag` instances on the same element subtree coordinate without context or wrappers — innermost gets first refusal, the verdict bubbles outward through standard pointer events.
 - **Lightweight:** Zero dependencies (other than React) and tiny bundle size.
-- **Predictable:** Simple API based on relative position changes.
 - **TypeScript:** Fully typed for a great developer experience.
 
 ## License
