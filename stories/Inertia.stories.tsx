@@ -1,17 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useMemo, useState } from 'react'
-import {
-	useDrag,
-	type Position,
-	type PositionWithVelocity,
-} from '../src/index'
+import { useDrag, type Position, type PositionWithVelocity } from '../src/index'
 import './styles.css'
 
 // Absolute positions on the canvas (relative to canvas center).
 const snapPointPositions: Position[] = [
+	{ x: -280, y: -120 },
 	{ x: -160, y: -120 },
 	{ x: 160, y: -120 },
 	{ x: -160, y: 120 },
+	{ x: -280, y: 120 },
 	{ x: 160, y: 120 },
 ]
 
