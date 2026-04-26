@@ -9,19 +9,19 @@ const stepped = (
 	stepSize: number,
 ) => originalPosition + Math.round(offsetPosition / stepSize) * stepSize
 
-const VerticalWithSteps = () => {
+const HorizontalWithSteps = () => {
 	const stepSize = 50
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
 	const onRelativePositionChange = useCallback(
-		({ y }: PositionWithVelocity) => {
-			setPositionOffset(y)
+		({ x }: PositionWithVelocity) => {
+			setPositionOffset(x)
 		},
 		[],
 	)
 	const onEnd = useCallback(
-		({ y }: PositionWithVelocity) => {
-			setPosition((position) => stepped(position, y, stepSize))
+		({ x }: PositionWithVelocity) => {
+			setPosition((position) => stepped(position, x, stepSize))
 			setPositionOffset(0)
 		},
 		[stepSize],
@@ -36,26 +36,26 @@ const VerticalWithSteps = () => {
 			className="draggable"
 			style={
 				{
-					'--y': `${stepped(position, positionOffset, stepSize)}px`,
+					'--x': `${stepped(position, positionOffset, stepSize)}px`,
 				} as React.CSSProperties
 			}
 			{...elementProps}
 		>
-			↕️
+			↔️
 		</button>
 	)
 }
 
-const meta: Meta<typeof VerticalWithSteps> = {
-	title: 'useDrag/Vertical with Steps',
-	component: VerticalWithSteps,
+const meta: Meta<typeof HorizontalWithSteps> = {
+	title: 'useDrag/Horizontal with Steps',
+	component: HorizontalWithSteps,
 	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
 		docs: {
 			description: {
 				component:
-					'Drag the button up or down. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Horizontal movement is ignored.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/VerticalWithSteps.stories.tsx)',
+					'Drag the button left or right. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Vertical movement is ignored.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/HorizontalWithSteps.stories.tsx)',
 			},
 		},
 	},
@@ -63,4 +63,4 @@ const meta: Meta<typeof VerticalWithSteps> = {
 
 export default meta
 
-export const Default: StoryObj<typeof VerticalWithSteps> = {}
+export const Default: StoryObj<typeof HorizontalWithSteps> = {}

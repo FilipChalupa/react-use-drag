@@ -3,17 +3,17 @@ import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
 import './styles.css'
 
-const HorizontalOnly = () => {
+const VerticalOnly = () => {
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
 	const onRelativePositionChange = useCallback(
-		({ x }: PositionWithVelocity) => {
-			setPositionOffset(x)
+		({ y }: PositionWithVelocity) => {
+			setPositionOffset(y)
 		},
 		[],
 	)
-	const onEnd = useCallback(({ x }: PositionWithVelocity) => {
-		setPosition((position) => position + x)
+	const onEnd = useCallback(({ y }: PositionWithVelocity) => {
+		setPosition((position) => position + y)
 		setPositionOffset(0)
 	}, [])
 	const { elementProps } = useDrag({
@@ -26,26 +26,26 @@ const HorizontalOnly = () => {
 			className="draggable"
 			style={
 				{
-					'--x': `${position + positionOffset}px`,
+					'--y': `${position + positionOffset}px`,
 				} as React.CSSProperties
 			}
 			{...elementProps}
 		>
-			↔️
+			↕️
 		</button>
 	)
 }
 
-const meta: Meta<typeof HorizontalOnly> = {
-	title: 'useDrag/Horizontal Only',
-	component: HorizontalOnly,
+const meta: Meta<typeof VerticalOnly> = {
+	title: 'useDrag/Vertical Only',
+	component: VerticalOnly,
 	tags: ['autodocs'],
 	parameters: {
 		layout: 'centered',
 		docs: {
 			description: {
 				component:
-					'Drag the button left or right. Vertical movement is ignored — only the `x` value from `onRelativePositionChange` is applied.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/HorizontalOnly.stories.tsx)',
+					'Drag the button up or down. Horizontal movement is ignored — only the `y` value from `onRelativePositionChange` is applied.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/VerticalOnly.stories.tsx)',
 			},
 		},
 	},
@@ -53,4 +53,4 @@ const meta: Meta<typeof HorizontalOnly> = {
 
 export default meta
 
-export const Default: StoryObj<typeof HorizontalOnly> = {}
+export const Default: StoryObj<typeof VerticalOnly> = {}
