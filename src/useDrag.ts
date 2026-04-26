@@ -57,8 +57,15 @@ export interface UseDragOptions {
 	 * `pan-y` element) can continue. When omitted, the drag starts immediately on
 	 * pointerdown. Set `touch-action` accordingly: `none` for unconditional drag,
 	 * `pan-x` / `pan-y` to preserve the corresponding native scroll fallback.
+	 *
+	 * The second argument carries `pointerType` (`'mouse' | 'touch' | 'pen' | …`)
+	 * so the consumer can short-circuit for input modes that don't have a native
+	 * scroll fallback to defer to (typically mouse).
 	 */
-	shouldStart?: (firstMove: Position) => boolean
+	shouldStart?: (
+		firstMove: Position,
+		info: { pointerType: string },
+	) => boolean
 }
 
 /**
@@ -464,7 +471,10 @@ export const useDrag = (options: UseDragOptions) => {
 				) {
 					return
 				}
-				const accept = shouldStart!({ x: deltaX, y: deltaY })
+				const accept = shouldStart!(
+					{ x: deltaX, y: deltaY },
+					{ pointerType: event.pointerType },
+				)
 				if (!accept) {
 					armingRef.current = null
 					return

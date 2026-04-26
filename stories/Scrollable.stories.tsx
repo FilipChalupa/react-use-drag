@@ -29,24 +29,32 @@ const Scrollable = () => {
 		setPositionOffset({ x: 0, y: 0 })
 	}, [])
 
-	const shouldStart = useCallback(({ y }: Position) => {
-		const scroll = scrollRef.current
-		if (!scroll) {
-			return true
-		}
-		// Drag the card only when the inner scroll has nowhere left to go in the
-		// gesture's direction. Otherwise let native scroll consume the gesture.
-		const atTop = scroll.scrollTop <= 0
-		const atBottom =
-			scroll.scrollTop >= scroll.scrollHeight - scroll.clientHeight - 1
-		if (y > 0 && atTop) {
-			return true
-		}
-		if (y < 0 && atBottom) {
-			return true
-		}
-		return false
-	}, [])
+	const shouldStart = useCallback(
+		({ y }: Position, { pointerType }: { pointerType: string }) => {
+			// Mouse has no native scroll-by-drag to defer to, so the bottom-sheet
+			// rule wouldn't make sense — always take over.
+			if (pointerType === 'mouse') {
+				return true
+			}
+			const scroll = scrollRef.current
+			if (!scroll) {
+				return true
+			}
+			// Drag the card only when the inner scroll has nowhere left to go in the
+			// gesture's direction. Otherwise let native scroll consume the gesture.
+			const atTop = scroll.scrollTop <= 0
+			const atBottom =
+				scroll.scrollTop >= scroll.scrollHeight - scroll.clientHeight - 1
+			if (y > 0 && atTop) {
+				return true
+			}
+			if (y < 0 && atBottom) {
+				return true
+			}
+			return false
+		},
+		[],
+	)
 
 	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
