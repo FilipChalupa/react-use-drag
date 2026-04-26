@@ -31,7 +31,7 @@ export type DragState = 'resting' | 'dragging' | 'coasting'
 export interface UseDragOptions {
 	/** Called when the position changes during dragging or coasting. Position is relative to the start. */
 	onRelativePositionChange: (position: PositionWithVelocity) => void
-	/** Optional. Called when the dragging interaction starts. */
+	/** Optional. Called when the dragging interaction starts. With `shouldStart` it fires only after the gesture is promoted to a drag. */
 	onStart?: () => void
 	/**
 	 * Optional. Called when the interaction fully ends. With `inertia` or `snapPoints`
@@ -51,6 +51,14 @@ export interface UseDragOptions {
 	 * without `inertia` it teleports there immediately.
 	 */
 	snapPoints?: Position[]
+	/**
+	 * Optional. Evaluated on the first pointermove past a few-pixel threshold.
+	 * Return `false` to abandon the gesture so native behavior (e.g. scroll on a
+	 * `pan-y` element) can continue. When omitted, the drag starts immediately on
+	 * pointerdown. Set `touch-action` accordingly: `none` for unconditional drag,
+	 * `pan-x` / `pan-y` to preserve the corresponding native scroll fallback.
+	 */
+	shouldStart?: (firstMove: Position) => boolean
 }
 
 /**
@@ -75,6 +83,7 @@ const snapDistanceThreshold = 0.5 // px; spring is considered settled below this
 const snapStiffness = 180
 const snapDamping = 2 * Math.sqrt(snapStiffness) // critical damping — never overshoots
 const maximumSnapFrameDeltaSeconds = 0.032 // clamp dt so a backgrounded tab can't blow up the spring
+const armingMoveThresholdPixels = 5 // minimum movement on either axis before shouldStart is evaluated
 
 const projectInertiaEndpoint = (
 	start: Position,
@@ -113,8 +122,14 @@ interface CoastingData {
 }
 
 export const useDrag = (options: UseDragOptions) => {
-	const { onRelativePositionChange, onStart, onEnd, inertia, snapPoints } =
-		options
+	const {
+		onRelativePositionChange,
+		onStart,
+		onEnd,
+		inertia,
+		snapPoints,
+		shouldStart,
+	} = options
 	const [dragState, setDragState] = useState<DragState>('resting')
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
@@ -125,6 +140,12 @@ export const useDrag = (options: UseDragOptions) => {
 	const velocityResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const animationFrameRef = useRef<number | null>(null)
 	const coastingStateRef = useRef<CoastingData | null>(null)
+	// Set on pointerdown when shouldStart is in play; cleared either on the first
+	// move that gets promoted to a drag or on the move that decides not to drag.
+	const armingRef = useRef<{ pointerId: number } | null>(null)
+	// Synchronous mirror of dragState so the move handler can detect a fresh
+	// arming → dragging promotion within the same callback (state is async).
+	const dragStateRef = useRef<DragState>('resting')
 
 	// Latest onEnd kept in a ref so the requestAnimationFrame loop and the
 	// abort-on-grab path always reach the current callback even after an
@@ -133,6 +154,11 @@ export const useDrag = (options: UseDragOptions) => {
 	useEffect(() => {
 		onEndRef.current = onEnd
 	}, [onEnd])
+
+	const transitionTo = useCallback((next: DragState) => {
+		dragStateRef.current = next
+		setDragState(next)
+	}, [])
 
 	const cancelVelocityReset = useCallback(() => {
 		if (velocityResetRef.current !== null) {
@@ -149,6 +175,7 @@ export const useDrag = (options: UseDragOptions) => {
 				animationFrameRef.current = null
 			}
 			coastingStateRef.current = null
+			armingRef.current = null
 		}
 	}, [cancelVelocityReset])
 
@@ -156,7 +183,7 @@ export const useDrag = (options: UseDragOptions) => {
 		(position: Position, finalVelocity: Velocity) => {
 			animationFrameRef.current = null
 			coastingStateRef.current = null
-			setDragState('resting')
+			transitionTo('resting')
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
@@ -166,7 +193,7 @@ export const useDrag = (options: UseDragOptions) => {
 			setVelocity({ x: 0, y: 0 })
 			lastMoveRef.current = null
 		},
-		[],
+		[transitionTo],
 	)
 
 	const step = useCallback(
@@ -271,15 +298,15 @@ export const useDrag = (options: UseDragOptions) => {
 				lastFrameTime: now,
 				target,
 			}
-			setDragState('coasting')
+			transitionTo('coasting')
 			animationFrameRef.current = requestAnimationFrame(step)
 		},
-		[step],
+		[step, transitionTo],
 	)
 
 	const finishNow = useCallback(
 		(position: Position, finalVelocity: Velocity) => {
-			setDragState('resting')
+			transitionTo('resting')
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
@@ -289,12 +316,11 @@ export const useDrag = (options: UseDragOptions) => {
 			setVelocity({ x: 0, y: 0 })
 			lastMoveRef.current = null
 		},
-		[],
+		[transitionTo],
 	)
 
 	const onPointerDown = useCallback(
 		(event: PointerEvent<HTMLElement>) => {
-			event.preventDefault()
 			// If a coasting animation is in flight, the user has grabbed the element back.
 			// Drop momentum, fire onEnd with the in-flight position, then start a fresh drag.
 			if (animationFrameRef.current !== null) {
@@ -312,28 +338,52 @@ export const useDrag = (options: UseDragOptions) => {
 					setVelocity({ x: 0, y: 0 })
 				}
 			}
+			// Discard arming state from any previous gesture that left without
+			// either promotion or a tracked pointerup (e.g. drag off-element).
+			armingRef.current = null
+
 			startPosition.current = {
 				x: event.clientX,
 				y: event.clientY,
 				scrollX: window.scrollX, // @TODO: handle any parent scroll
 				scrollY: window.scrollY, // @TODO: handle any parent scroll
 			}
-			event.currentTarget.setPointerCapture(event.pointerId)
 			cancelVelocityReset()
 			lastMoveRef.current = null
 			setVelocity({ x: 0, y: 0 })
-			setDragState('dragging')
+
+			if (shouldStart) {
+				// Defer drag start (no preventDefault, no capture) so native gestures
+				// like scroll can still kick in if shouldStart later returns false.
+				armingRef.current = { pointerId: event.pointerId }
+				return
+			}
+
+			event.preventDefault()
+			event.currentTarget.setPointerCapture(event.pointerId)
+			transitionTo('dragging')
 			onStart?.()
 		},
-		[onStart, cancelVelocityReset],
+		[onStart, shouldStart, cancelVelocityReset, transitionTo],
 	)
 
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
-			if (dragState !== 'dragging') {
+			if (dragState !== 'dragging' && !shouldStart) {
 				return undefined
 			}
 			return (event: PointerEvent<HTMLElement>) => {
+				// Release happened while still arming → no drag was ever started, just clean up.
+				if (
+					armingRef.current &&
+					event.pointerId === armingRef.current.pointerId
+				) {
+					armingRef.current = null
+				}
+				if (dragStateRef.current !== 'dragging') {
+					return
+				}
+
 				event.preventDefault()
 				cancelVelocityReset()
 				event.currentTarget.releasePointerCapture(event.pointerId)
@@ -382,6 +432,7 @@ export const useDrag = (options: UseDragOptions) => {
 		},
 		[
 			dragState,
+			shouldStart,
 			offsetPosition,
 			velocity,
 			inertia,
@@ -396,10 +447,38 @@ export const useDrag = (options: UseDragOptions) => {
 	const onPointerCancel = useMemo(() => handleEnd(true), [handleEnd])
 
 	const onPointerMove = useMemo(() => {
-		if (dragState !== 'dragging') {
+		if (dragState !== 'dragging' && !shouldStart) {
 			return undefined
 		}
 		return (event: PointerEvent<HTMLElement>) => {
+			// Arming branch: decide whether this gesture should become a drag.
+			if (armingRef.current) {
+				if (event.pointerId !== armingRef.current.pointerId) {
+					return
+				}
+				const deltaX = event.clientX - startPosition.current.x
+				const deltaY = event.clientY - startPosition.current.y
+				if (
+					Math.abs(deltaX) < armingMoveThresholdPixels &&
+					Math.abs(deltaY) < armingMoveThresholdPixels
+				) {
+					return
+				}
+				const accept = shouldStart!({ x: deltaX, y: deltaY })
+				if (!accept) {
+					armingRef.current = null
+					return
+				}
+				// Promote: claim the pointer and treat this move as the first drag move.
+				event.currentTarget.setPointerCapture(event.pointerId)
+				armingRef.current = null
+				transitionTo('dragging')
+				onStart?.()
+				// fall through to drag-move logic
+			} else if (dragStateRef.current !== 'dragging') {
+				return
+			}
+
 			event.preventDefault()
 			const now = performance.now()
 			const newOffsetPosition = {
@@ -440,7 +519,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			setOffsetPosition(newOffsetPosition)
 		}
-	}, [dragState, cancelVelocityReset])
+	}, [dragState, shouldStart, onStart, transitionTo, cancelVelocityReset])
 
 	useEffect(() => {
 		onRelativePositionChange({

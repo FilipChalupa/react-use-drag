@@ -64,3 +64,50 @@ button {
 	pointer-events: none;
 	translate: var(--x, 0) var(--y, 0);
 }
+
+.scrollable-canvas {
+	position: relative;
+	width: 100%;
+	min-height: 25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.scrollable-readout {
+	position: absolute;
+	top: 1rem;
+	left: 1rem;
+	margin: 0;
+	font-family: monospace;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: #666;
+}
+
+.scrollable-card {
+	width: 280px;
+	height: 320px;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 12px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	overflow: hidden;
+	translate: var(--x, 0) var(--y, 0);
+}
+
+.scrollable-content {
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+	box-sizing: border-box;
+	padding: 1rem;
+	touch-action: pan-y;
+	user-select: none;
+}
+
+.scrollable-content p {
+	margin: 0 0 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.5;
+}
