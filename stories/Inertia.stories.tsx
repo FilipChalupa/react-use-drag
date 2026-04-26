@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useDrag, type Position, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 // Absolute positions on the canvas (relative to canvas center).
@@ -113,8 +114,7 @@ const meta: Meta<typeof Inertia> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component:
-					'Flick the button to see inertia decay or snap to predefined targets. Toggle `inertia` and snap points via the controls. With both enabled the element springs to the snap point closest to where inertia would have settled, absorbing the release velocity. With only snap points enabled it jumps directly to the chosen target. With only inertia enabled it coasts and stops on its own.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/Inertia.stories.tsx)',
+				component: `Flick the button to see inertia decay or snap to predefined targets. Toggle \`inertia\` and snap points via the controls. With both enabled the element springs to the snap point closest to where inertia would have settled, absorbing the release velocity. With only snap points enabled it jumps directly to the chosen target. With only inertia enabled it coasts and stops on its own.\n\n${sourceLink('Inertia.stories.tsx')}`,
 			},
 		},
 	},

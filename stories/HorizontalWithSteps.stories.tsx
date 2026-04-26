@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 const stepped = (
@@ -54,8 +55,7 @@ const meta: Meta<typeof HorizontalWithSteps> = {
 		layout: 'centered',
 		docs: {
 			description: {
-				component:
-					'Drag the button left or right. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Vertical movement is ignored.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/HorizontalWithSteps.stories.tsx)',
+				component: `Drag the button left or right. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Vertical movement is ignored.\n\n${sourceLink('HorizontalWithSteps.stories.tsx')}`,
 			},
 		},
 	},

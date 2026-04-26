@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 const VerticalOnly = () => {
@@ -44,8 +45,7 @@ const meta: Meta<typeof VerticalOnly> = {
 		layout: 'centered',
 		docs: {
 			description: {
-				component:
-					'Drag the button up or down. Horizontal movement is ignored — only the `y` value from `onRelativePositionChange` is applied.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/VerticalOnly.stories.tsx)',
+				component: `Drag the button up or down. Horizontal movement is ignored — only the \`y\` value from \`onRelativePositionChange\` is applied.\n\n${sourceLink('VerticalOnly.stories.tsx')}`,
 			},
 		},
 	},

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 const lipsumLines = Array.from(
@@ -57,8 +58,7 @@ const meta: Meta<typeof BottomSheet> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component:
-					'A vertically scrollable card pinned to the bottom — the classic mobile bottom-sheet pattern. The handle bar at the top drags unconditionally (no scrollable subtree under it). The content area auto-defers to native vertical scroll until it reaches an edge; pulling down at the top of the content then drags the whole sheet down.\n\nNo `shouldStart` needed — the hook walks from the touch target up looking for a scrollable element and applies the bottom-sheet rule automatically. The content needs `touch-action: pan-y` and `overscroll-behavior-y: contain` so iOS/Android pull-to-refresh doesn\'t steal the gesture.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/BottomSheet.stories.tsx)',
+				component: `A vertically scrollable card pinned to the bottom — the classic mobile bottom-sheet pattern. The handle bar at the top drags unconditionally (no scrollable subtree under it). The content area auto-defers to native vertical scroll until it reaches an edge; pulling down at the top of the content then drags the whole sheet down.\n\nNo \`shouldStart\` needed — the hook walks from the touch target up looking for a scrollable element and applies the bottom-sheet rule automatically. The content needs \`touch-action: pan-y\` and \`overscroll-behavior-y: contain\` so iOS/Android pull-to-refresh doesn't steal the gesture.\n\n${sourceLink('BottomSheet.stories.tsx')}`,
 			},
 		},
 	},

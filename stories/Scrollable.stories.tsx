@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 const lipsumLines = Array.from(
@@ -57,8 +58,7 @@ const meta: Meta<typeof Scrollable> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component:
-					'A draggable card with content that scrolls in **both directions** inside. On touch input the inner native scroll consumes the gesture while it has room to move on either axis; once the gesture extends past an edge the whole card drags. On mouse input the card always drags immediately because there is no native scroll-by-drag to defer to — use the scroll wheel and shift+wheel to scroll the content.\n\nNo `shouldStart` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element needs `touch-action: pan-x pan-y` so the browser performs the corresponding native scroll, and `overscroll-behavior: contain` so iOS/Android pull-to-refresh and scroll chaining don\'t fight the gesture.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/Scrollable.stories.tsx)',
+				component: `A draggable card with content that scrolls in **both directions** inside. On touch input the inner native scroll consumes the gesture while it has room to move on either axis; once the gesture extends past an edge the whole card drags. On mouse input the card always drags immediately because there is no native scroll-by-drag to defer to — use the scroll wheel and shift+wheel to scroll the content.\n\nNo \`shouldStart\` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element needs \`touch-action: pan-x pan-y\` so the browser performs the corresponding native scroll, and \`overscroll-behavior: contain\` so iOS/Android pull-to-refresh and scroll chaining don't fight the gesture.\n\n${sourceLink('Scrollable.stories.tsx')}`,
 			},
 		},
 	},

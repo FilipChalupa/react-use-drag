@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
+import { sourceLink } from './sourceLink'
 import './styles.css'
 
 const AnyDirection = () => {
@@ -66,8 +67,7 @@ const meta: Meta<typeof AnyDirection> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component:
-					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `state` value.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/AnyDirection.stories.tsx)',
+				component: `Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the \`state\` value.\n\n${sourceLink('AnyDirection.stories.tsx')}`,
 			},
 		},
 	},
