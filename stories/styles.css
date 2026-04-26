@@ -1,3 +1,7 @@
+body {
+	font-family: sans-serif;
+}
+
 .any-direction-canvas {
 	position: relative;
 	width: 100%;
