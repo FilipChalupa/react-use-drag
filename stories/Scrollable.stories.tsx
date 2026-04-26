@@ -6,7 +6,7 @@ import './styles.css'
 const lipsumLines = Array.from(
 	{ length: 24 },
 	(_, index) =>
-		`${index + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+		`${index + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.`,
 )
 
 const Scrollable = () => {
@@ -58,7 +58,7 @@ const meta: Meta<typeof Scrollable> = {
 		docs: {
 			description: {
 				component:
-					'A draggable card with scrollable content inside. On touch input the inner native scroll consumes the gesture while it has room to move; once it hits an edge, the same direction promotes the gesture to a drag of the whole card (the standard bottom-sheet / "rubber band" pattern). On mouse input the card always drags immediately because there is no native scroll-by-drag to defer to — use the scroll wheel to scroll the content.\n\nNo `shouldStart` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element just needs `touch-action: pan-y` (or `pan-x`) so the browser performs the corresponding native scroll.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/Scrollable.stories.tsx)',
+					'A draggable card with content that scrolls in **both directions** inside. On touch input the inner native scroll consumes the gesture while it has room to move on either axis; once the gesture extends past an edge the whole card drags. On mouse input the card always drags immediately because there is no native scroll-by-drag to defer to — use the scroll wheel and shift+wheel to scroll the content.\n\nNo `shouldStart` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element needs `touch-action: pan-x pan-y` so the browser performs the corresponding native scroll, and `overscroll-behavior: contain` so iOS/Android pull-to-refresh and scroll chaining don\'t fight the gesture.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/Scrollable.stories.tsx)',
 			},
 		},
 	},

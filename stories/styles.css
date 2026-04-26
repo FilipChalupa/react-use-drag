@@ -99,14 +99,83 @@ button {
 .scrollable-content {
 	width: 100%;
 	height: 100%;
-	overflow-y: auto;
+	overflow: auto;
 	box-sizing: border-box;
 	padding: 1rem;
-	touch-action: pan-y;
+	touch-action: pan-x pan-y;
+	overscroll-behavior: contain;
 	user-select: none;
 }
 
 .scrollable-content p {
+	margin: 0 0 0.75rem;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.bottom-sheet-canvas {
+	position: relative;
+	width: 100%;
+	min-height: 30rem;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+}
+
+.bottom-sheet-readout {
+	position: absolute;
+	top: 1rem;
+	left: 1rem;
+	margin: 0;
+	font-family: monospace;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: #666;
+}
+
+.bottom-sheet {
+	width: 100%;
+	max-width: 360px;
+	height: 28rem;
+	background: white;
+	border: 1px solid #ccc;
+	border-top-left-radius: 16px;
+	border-top-right-radius: 16px;
+	box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	translate: 0 var(--y, 0);
+}
+
+.bottom-sheet-handle {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: center;
+	padding: 0.5rem 0;
+}
+
+.bottom-sheet-handle::before {
+	content: '';
+	display: block;
+	width: 2.5rem;
+	height: 0.25rem;
+	border-radius: 9999px;
+	background: #ccc;
+}
+
+.bottom-sheet-content {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	box-sizing: border-box;
+	padding: 0 1rem 1rem;
+	touch-action: pan-y;
+	overscroll-behavior-y: contain;
+	user-select: none;
+}
+
+.bottom-sheet-content p {
 	margin: 0 0 0.75rem;
 	font-size: 0.875rem;
 	line-height: 1.5;
