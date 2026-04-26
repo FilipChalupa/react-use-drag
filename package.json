@@ -1,6 +1,6 @@
 {
 	"name": "react-use-drag",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"description": "Drag interactions made easier.",
 	"type": "module",
 	"main": "./dist/index.cjs",
