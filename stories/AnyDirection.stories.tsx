@@ -67,7 +67,7 @@ const meta: Meta<typeof AnyDirection> = {
 		docs: {
 			description: {
 				component:
-					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `state` value.',
+					'Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the `state` value.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/AnyDirection.stories.tsx)',
 			},
 		},
 	},

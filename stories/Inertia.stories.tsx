@@ -114,7 +114,7 @@ const meta: Meta<typeof Inertia> = {
 		docs: {
 			description: {
 				component:
-					'Flick the button to see inertia decay or snap to predefined targets. Toggle `inertia` and snap points via the controls. With both enabled the element springs to the snap point closest to where inertia would have settled, absorbing the release velocity. With only snap points enabled it jumps directly to the chosen target. With only inertia enabled it coasts and stops on its own.',
+					'Flick the button to see inertia decay or snap to predefined targets. Toggle `inertia` and snap points via the controls. With both enabled the element springs to the snap point closest to where inertia would have settled, absorbing the release velocity. With only snap points enabled it jumps directly to the chosen target. With only inertia enabled it coasts and stops on its own.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/Inertia.stories.tsx)',
 			},
 		},
 	},

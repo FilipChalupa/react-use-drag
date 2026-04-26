@@ -45,7 +45,7 @@ const meta: Meta<typeof HorizontalOnly> = {
 		docs: {
 			description: {
 				component:
-					'Drag the button left or right. Vertical movement is ignored — only the `x` value from `onRelativePositionChange` is applied.',
+					'Drag the button left or right. Vertical movement is ignored — only the `x` value from `onRelativePositionChange` is applied.\n\n[View source on GitHub](https://github.com/FilipChalupa/react-use-drag/blob/main/stories/HorizontalOnly.stories.tsx)',
 			},
 		},
 	},
