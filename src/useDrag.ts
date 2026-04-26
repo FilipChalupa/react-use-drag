@@ -221,10 +221,14 @@ export const useDrag = (options: UseDragOptions) => {
 	// Set when the hook is taking over native scroll manually (after the arming
 	// verdict said "defer to scroll" and there's a scroll container). Each move
 	// updates `scrollEl.scrollTop`/`scrollLeft` directly. Scroll velocity is
-	// tracked so we can hand off to a coasting animation on release.
+	// tracked so we can hand off to a coasting animation on release. `lockedAxis`
+	// is determined from the dominant component of the gesture at scroll-mode
+	// entry; the other axis is then ignored for the rest of the gesture (iOS-
+	// style direction lock — minor diagonal drift doesn't pollute the scroll).
 	const scrollingStateRef = useRef<{
 		pointerId: number
 		scrollEl: HTMLElement
+		lockedAxis: 'x' | 'y'
 		lastClientX: number
 		lastClientY: number
 		lastTime: number
@@ -641,7 +645,8 @@ export const useDrag = (options: UseDragOptions) => {
 			// SCROLL MODE: hook is manually scrolling the inner container. Once we
 			// commit to scroll for a gesture, the gesture stays in scroll mode until
 			// pointerup — even if the scroll hits an edge. Drag has to come from a
-			// fresh gesture.
+			// fresh gesture. Only the axis locked at scroll-mode entry is applied;
+			// off-axis movement is dropped on the floor.
 			if (scrollingStateRef.current) {
 				if (event.pointerId !== scrollingStateRef.current.pointerId) {
 					return
@@ -650,16 +655,24 @@ export const useDrag = (options: UseDragOptions) => {
 				const dx = event.clientX - sm.lastClientX
 				const dy = event.clientY - sm.lastClientY
 				event.preventDefault()
-				sm.scrollEl.scrollTop -= dy
-				sm.scrollEl.scrollLeft -= dx
+				if (sm.lockedAxis === 'y') {
+					sm.scrollEl.scrollTop -= dy
+				} else {
+					sm.scrollEl.scrollLeft -= dx
+				}
 				const now = performance.now()
 				const deltaMilliseconds = now - sm.lastTime
 				if (deltaMilliseconds > 0) {
 					// Scroll velocity is the negation of the finger velocity (finger
-					// down → scroll up); store it in scroll-position units so the
-					// coasting math can apply it directly to scrollTop/Left.
-					sm.velocityX = (-dx / deltaMilliseconds) * 1000
-					sm.velocityY = (-dy / deltaMilliseconds) * 1000
+					// down → scroll up); only the locked axis carries any value, the
+					// other stays zero so coasting also stays single-axis.
+					if (sm.lockedAxis === 'y') {
+						sm.velocityX = 0
+						sm.velocityY = (-dy / deltaMilliseconds) * 1000
+					} else {
+						sm.velocityX = (-dx / deltaMilliseconds) * 1000
+						sm.velocityY = 0
+					}
 					if (sm.velocityResetTimeout !== null) {
 						clearTimeout(sm.velocityResetTimeout)
 					}
@@ -691,20 +704,32 @@ export const useDrag = (options: UseDragOptions) => {
 				}
 				const delta = { x: deltaX, y: deltaY }
 				const scrollableAncestor = armingRef.current.scrollableAncestor
+				// Lock to the dominant axis of the gesture; off-axis drift is ignored
+				// for the rest of the gesture. The auto-detect verdict only checks
+				// the locked axis too — a slight horizontal jitter while pulling
+				// down at scrollTop=0 won't kick us into scroll mode.
+				const lockedAxis: 'x' | 'y' =
+					Math.abs(deltaY) >= Math.abs(deltaX) ? 'y' : 'x'
+				const axisLockedDelta =
+					lockedAxis === 'y' ? { x: 0, y: deltaY } : { x: deltaX, y: 0 }
 				const accept = shouldStart
 					? shouldStart(delta, { pointerType: event.pointerType })
-					: evaluateScrollEdgeAccept(delta, scrollableAncestor)
+					: evaluateScrollEdgeAccept(axisLockedDelta, scrollableAncestor)
 				if (!accept) {
 					if (scrollableAncestor) {
 						// Defer to scroll, but the hook drives it — `touch-action: none`
-						// means the browser won't. Apply the threshold delta as the
-						// initial scroll so the gesture feels continuous.
+						// means the browser won't. Apply the threshold delta on the
+						// locked axis only so the gesture feels continuous.
 						const scrollEl = scrollableAncestor as HTMLElement
-						scrollEl.scrollTop -= deltaY
-						scrollEl.scrollLeft -= deltaX
+						if (lockedAxis === 'y') {
+							scrollEl.scrollTop -= deltaY
+						} else {
+							scrollEl.scrollLeft -= deltaX
+						}
 						scrollingStateRef.current = {
 							pointerId: event.pointerId,
 							scrollEl,
+							lockedAxis,
 							lastClientX: event.clientX,
 							lastClientY: event.clientY,
 							lastTime: performance.now(),
