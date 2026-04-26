@@ -18,13 +18,9 @@
 	color: #666;
 }
 
-.draggable,
-.resize {
+.draggable {
 	font-size: 2em;
 	min-height: 3em;
-}
-
-.draggable {
 	aspect-ratio: 1;
 	translate: var(--x, 0) var(--y, 0);
 }
@@ -32,11 +28,13 @@
 .resize-wrapper {
 	position: relative;
 	width: 300px;
-	height: 3em;
-	font-size: 2em;
+	height: 2em;
+	font-size: 1em;
 }
 
 .resize {
+	font-size: 1em;
+	min-height: 2em;
 	display: inline-grid;
 	position: absolute;
 	left: var(--left, 0);
