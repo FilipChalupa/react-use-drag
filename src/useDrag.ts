@@ -218,6 +218,16 @@ export const useDrag = (options: UseDragOptions) => {
 		pointerId: number
 		scrollableAncestor: Element | null
 	} | null>(null)
+	// Set when the hook is taking over native scroll manually (after the arming
+	// verdict said "defer to scroll" and there's a scroll container). Each move
+	// updates `scrollEl.scrollTop`/`scrollLeft` directly. When the gesture pulls
+	// past an edge, the hook transitions to dragging (rubber-band promotion).
+	const scrollingStateRef = useRef<{
+		pointerId: number
+		scrollEl: HTMLElement
+		lastClientX: number
+		lastClientY: number
+	} | null>(null)
 	// Synchronous mirror of dragState so the move handler can detect a fresh
 	// arming → dragging promotion within the same callback (state is async).
 	const dragStateRef = useRef<DragState>('resting')
@@ -251,6 +261,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			coastingStateRef.current = null
 			armingRef.current = null
+			scrollingStateRef.current = null
 		}
 	}, [cancelVelocityReset])
 
@@ -396,6 +407,14 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const onPointerDown = useCallback(
 		(event: PointerEvent<HTMLElement>) => {
+			console.log('[useDrag] pointerdown', {
+				pointerType: event.pointerType,
+				pointerId: event.pointerId,
+				clientX: event.clientX,
+				clientY: event.clientY,
+				currentTarget: (event.currentTarget as Element)?.className,
+				target: (event.target as Element)?.className,
+			})
 			// If a coasting animation is in flight, the user has grabbed the element back.
 			// Drop momentum, fire onEnd with the in-flight position, then start a fresh drag.
 			if (animationFrameRef.current !== null) {
@@ -435,6 +454,20 @@ export const useDrag = (options: UseDragOptions) => {
 					: null
 
 			if (shouldStart || scrollableAncestor) {
+				console.log('[useDrag] arming', {
+					reason: shouldStart ? 'shouldStart' : 'auto-detected scroll',
+					scrollable: scrollableAncestor
+						? {
+								className: (scrollableAncestor as Element).className,
+								scrollTop: (scrollableAncestor as HTMLElement).scrollTop,
+								scrollLeft: (scrollableAncestor as HTMLElement).scrollLeft,
+								scrollHeight: (scrollableAncestor as HTMLElement)
+									.scrollHeight,
+								clientHeight: (scrollableAncestor as HTMLElement)
+									.clientHeight,
+							}
+						: null,
+				})
 				// Capture the pointer immediately so the browser doesn't steal the
 				// gesture for native scroll/pan before we get a chance to evaluate
 				// it. We don't preventDefault yet — the arming verdict on the first
@@ -447,6 +480,7 @@ export const useDrag = (options: UseDragOptions) => {
 				return
 			}
 
+			console.log('[useDrag] immediate drag (no arming)')
 			event.preventDefault()
 			event.currentTarget.setPointerCapture(event.pointerId)
 			transitionTo('dragging')
@@ -458,12 +492,28 @@ export const useDrag = (options: UseDragOptions) => {
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
 			return (event: PointerEvent<HTMLElement>) => {
+				console.log(
+					`[useDrag] ${byCancellation ? 'pointercancel' : 'pointerup'}`,
+					{
+						pointerId: event.pointerId,
+						state: dragStateRef.current,
+						arming: !!armingRef.current,
+						scrolling: !!scrollingStateRef.current,
+					},
+				)
 				// Release happened while still arming → no drag was ever started, just clean up.
 				if (
 					armingRef.current &&
 					event.pointerId === armingRef.current.pointerId
 				) {
 					armingRef.current = null
+				}
+				// Release while we were manually scrolling → just clean up, no callbacks.
+				if (
+					scrollingStateRef.current &&
+					event.pointerId === scrollingStateRef.current.pointerId
+				) {
+					scrollingStateRef.current = null
 				}
 				if (dragStateRef.current !== 'dragging') {
 					return
@@ -531,8 +581,43 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const onPointerMove = useMemo(() => {
 		return (event: PointerEvent<HTMLElement>) => {
-			// Arming branch: decide whether this gesture should become a drag.
-			if (armingRef.current) {
+			// SCROLL MODE: hook is manually scrolling the inner container. Continue
+			// applying deltas; if the gesture pulls past an edge, hand off to drag.
+			if (scrollingStateRef.current) {
+				if (event.pointerId !== scrollingStateRef.current.pointerId) {
+					return
+				}
+				const sm = scrollingStateRef.current
+				const dx = event.clientX - sm.lastClientX
+				const dy = event.clientY - sm.lastClientY
+				const wouldDrag = evaluateScrollEdgeAccept(
+					{ x: dx, y: dy },
+					sm.scrollEl,
+				)
+				if (wouldDrag) {
+					console.log('[useDrag] scroll → drag (edge reached)')
+					scrollingStateRef.current = null
+					startPosition.current = {
+						x: event.clientX,
+						y: event.clientY,
+						scrollX: window.scrollX,
+						scrollY: window.scrollY,
+					}
+					lastMoveRef.current = null
+					transitionTo('dragging')
+					onStart?.()
+					// fall through to drag-move logic
+				} else {
+					event.preventDefault()
+					sm.scrollEl.scrollTop -= dy
+					sm.scrollEl.scrollLeft -= dx
+					sm.lastClientX = event.clientX
+					sm.lastClientY = event.clientY
+					return
+				}
+			}
+			// ARMING: first move evaluation — drag, scroll, or release.
+			else if (armingRef.current) {
 				if (event.pointerId !== armingRef.current.pointerId) {
 					return
 				}
@@ -545,18 +630,43 @@ export const useDrag = (options: UseDragOptions) => {
 					return
 				}
 				const delta = { x: deltaX, y: deltaY }
+				const scrollableAncestor = armingRef.current.scrollableAncestor
 				const accept = shouldStart
 					? shouldStart(delta, { pointerType: event.pointerType })
-					: evaluateScrollEdgeAccept(
-							delta,
-							armingRef.current.scrollableAncestor,
-						)
+					: evaluateScrollEdgeAccept(delta, scrollableAncestor)
+				console.log('[useDrag] arming verdict', {
+					delta,
+					accept,
+					verdictBy: shouldStart ? 'shouldStart' : 'auto-detect',
+				})
 				if (!accept) {
-					// Hand the gesture back so native scroll/whatever can take over.
+					if (scrollableAncestor) {
+						// Defer to scroll, but the hook drives it — `touch-action: none`
+						// means the browser won't. Apply the threshold delta as the
+						// initial scroll so the gesture feels continuous.
+						console.log('[useDrag] entering scroll mode')
+						const scrollEl = scrollableAncestor as HTMLElement
+						scrollEl.scrollTop -= deltaY
+						scrollEl.scrollLeft -= deltaX
+						scrollingStateRef.current = {
+							pointerId: event.pointerId,
+							scrollEl,
+							lastClientX: event.clientX,
+							lastClientY: event.clientY,
+						}
+						armingRef.current = null
+						event.preventDefault()
+						return
+					}
+					// No scroll target (pure shouldStart use case) → release for
+					// whatever native behavior the user intended.
 					event.currentTarget.releasePointerCapture(event.pointerId)
 					armingRef.current = null
 					return
 				}
+				console.log('[useDrag] PROMOTED to dragging', {
+					at: { x: event.clientX, y: event.clientY },
+				})
 				// Promote: pointer is already captured (we claimed it on pointerdown
 				// to keep the browser from stealing the gesture). Reset startPosition
 				// to the current point so the drag begins from where the finger is

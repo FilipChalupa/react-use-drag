@@ -102,8 +102,7 @@ button {
 	overflow: auto;
 	box-sizing: border-box;
 	padding: 1rem;
-	touch-action: pan-x pan-y;
-	overscroll-behavior: contain;
+	touch-action: none;
 	user-select: none;
 }
 
@@ -154,6 +153,7 @@ button {
 	display: flex;
 	justify-content: center;
 	padding: 0.5rem 0;
+	touch-action: none;
 }
 
 .bottom-sheet-handle::before {
@@ -170,8 +170,7 @@ button {
 	overflow-y: auto;
 	box-sizing: border-box;
 	padding: 0 1rem 1rem;
-	touch-action: pan-y;
-	overscroll-behavior-y: contain;
+	touch-action: none;
 	user-select: none;
 }
 
