@@ -53,23 +53,24 @@ export interface UseDragOptions {
 	snapPoints?: Position[]
 	/**
 	 * Optional escape hatch. Evaluated on the first pointermove past a few-pixel
-	 * threshold. Return `false` to abandon the gesture so native behavior
-	 * (e.g. scroll on a `pan-y` element) can continue, `true` to take over as a
-	 * drag.
+	 * threshold. Return `true` to take over the gesture as a drag, `false` to
+	 * defer it. If a scrollable subtree exists, deferring puts the hook into
+	 * scroll mode (it drives `scrollTop`/`scrollLeft` itself with momentum on
+	 * release); otherwise the hook releases the pointer.
 	 *
 	 * When omitted, the hook auto-detects: on `pointerdown` it walks from the
 	 * event target up to the drag root looking for a scrollable element. If one
-	 * is found and the input is touch/pen, the gesture is held back until first
-	 * move; the drag takes over only when the scroll container has nowhere left
-	 * to scroll in the gesture's direction (the standard bottom-sheet pattern).
-	 * Mouse input always drags immediately because there's no native scroll-by-
-	 * drag to defer to.
+	 * is found and the input is touch/pen, the gesture is held back until the
+	 * first move; the verdict picks drag when the scroll container is at its
+	 * edge in the gesture's direction, scroll otherwise. Mouse always drags
+	 * immediately.
 	 *
-	 * Set `touch-action` accordingly on the scrollable element: `pan-x` / `pan-y`
-	 * lets the browser do the native scroll the hook is deferring to.
+	 * Set `touch-action: none` on the scrollable element so the browser doesn't
+	 * claim the gesture — the hook drives both drag and scroll itself, with
+	 * momentum and a dominant-axis lock for diagonal gestures.
 	 *
-	 * The second argument carries `pointerType` so the consumer can short-circuit
-	 * by input mode.
+	 * The second argument carries `pointerType` so the consumer can short-
+	 * circuit by input mode.
 	 */
 	shouldStart?: (
 		firstMove: Position,
@@ -99,7 +100,7 @@ const snapDistanceThreshold = 0.5 // px; spring is considered settled below this
 const snapStiffness = 180
 const snapDamping = 2 * Math.sqrt(snapStiffness) // critical damping — never overshoots
 const maximumSnapFrameDeltaSeconds = 0.032 // clamp dt so a backgrounded tab can't blow up the spring
-const armingMoveThresholdPixels = 5 // minimum movement on either axis before shouldStart is evaluated
+const armingMoveThresholdPixels = 5 // minimum movement on either axis before the arming verdict (drag vs scroll) runs
 
 const projectInertiaEndpoint = (
 	start: Position,
@@ -161,9 +162,9 @@ const findScrollableAncestor = (
 	return null
 }
 
-// Default arming verdict when shouldStart isn't supplied: defer to native scroll
-// while the container has room to move in the gesture's direction; otherwise
-// promote to drag (rubber-band edges).
+// Default arming verdict when shouldStart isn't supplied: drag when the scroll
+// container has nowhere left to scroll in the gesture's direction (rubber-band
+// edges); otherwise return false so the move handler enters scroll mode.
 const evaluateScrollEdgeAccept = (
 	delta: Position,
 	scrollEl: Element | null,
@@ -518,17 +519,18 @@ export const useDrag = (options: UseDragOptions) => {
 			setVelocity({ x: 0, y: 0 })
 
 			// Auto-detect a scrollable subtree only when shouldStart isn't provided
-			// and the input has a native scroll fallback to defer to (i.e. not mouse).
+			// and the input is touch/pen — mouse has no scroll-by-drag, so it always
+			// drags immediately.
 			const scrollableAncestor =
 				!shouldStart && event.pointerType !== 'mouse'
 					? findScrollableAncestor(event.target, event.currentTarget)
 					: null
 
 			if (shouldStart || scrollableAncestor) {
-				// Capture the pointer immediately so the browser doesn't steal the
-				// gesture for native scroll/pan before we get a chance to evaluate
-				// it. We don't preventDefault yet — the arming verdict on the first
-				// move decides whether the gesture becomes a drag or scroll mode.
+				// Capture the pointer immediately. The arming verdict on the first
+				// move decides whether the gesture becomes a drag or enters scroll
+				// mode; we don't preventDefault yet so a sibling tap can still go
+				// through if no movement crosses the threshold.
 				event.currentTarget.setPointerCapture(event.pointerId)
 				armingRef.current = {
 					pointerId: event.pointerId,

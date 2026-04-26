@@ -58,7 +58,7 @@ const meta: Meta<typeof BottomSheet> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component: `A vertically scrollable card pinned to the bottom — the classic mobile bottom-sheet pattern. The handle bar at the top drags unconditionally (no scrollable subtree under it). The content area auto-defers to native vertical scroll until it reaches an edge; pulling down at the top of the content then drags the whole sheet down.\n\nNo \`shouldStart\` needed — the hook walks from the touch target up looking for a scrollable element and applies the bottom-sheet rule automatically. The content needs \`touch-action: pan-y\` and \`overscroll-behavior-y: contain\` so iOS/Android pull-to-refresh doesn't steal the gesture.\n\n${sourceLink('BottomSheet.stories.tsx')}`,
+				component: `A vertically scrollable card pinned to the bottom — the classic mobile bottom-sheet pattern. The handle bar at the top drags unconditionally (no scrollable subtree under it). The content area defers to scroll mode (the hook drives \`scrollTop\` itself with momentum on release) when the inner scroll has room in the gesture's direction; if you start from the very top and pull down, the verdict picks drag and the whole sheet moves down. Once a gesture commits to scroll, it stays in scroll until release — to close the sheet from a scrolled-away state, lift the finger first, then start a fresh pull from the top.\n\nNo \`shouldStart\` needed — the hook walks from the touch target up looking for a scrollable element and applies the rule automatically. The content needs \`touch-action: none\` so the browser doesn't fight the hook for the gesture.\n\n${sourceLink('BottomSheet.stories.tsx')}`,
 			},
 		},
 	},
