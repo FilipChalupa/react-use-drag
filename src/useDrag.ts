@@ -52,15 +52,24 @@ export interface UseDragOptions {
 	 */
 	snapPoints?: Position[]
 	/**
-	 * Optional. Evaluated on the first pointermove past a few-pixel threshold.
-	 * Return `false` to abandon the gesture so native behavior (e.g. scroll on a
-	 * `pan-y` element) can continue. When omitted, the drag starts immediately on
-	 * pointerdown. Set `touch-action` accordingly: `none` for unconditional drag,
-	 * `pan-x` / `pan-y` to preserve the corresponding native scroll fallback.
+	 * Optional escape hatch. Evaluated on the first pointermove past a few-pixel
+	 * threshold. Return `false` to abandon the gesture so native behavior
+	 * (e.g. scroll on a `pan-y` element) can continue, `true` to take over as a
+	 * drag.
 	 *
-	 * The second argument carries `pointerType` (`'mouse' | 'touch' | 'pen' | …`)
-	 * so the consumer can short-circuit for input modes that don't have a native
-	 * scroll fallback to defer to (typically mouse).
+	 * When omitted, the hook auto-detects: on `pointerdown` it walks from the
+	 * event target up to the drag root looking for a scrollable element. If one
+	 * is found and the input is touch/pen, the gesture is held back until first
+	 * move; the drag takes over only when the scroll container has nowhere left
+	 * to scroll in the gesture's direction (the standard bottom-sheet pattern).
+	 * Mouse input always drags immediately because there's no native scroll-by-
+	 * drag to defer to.
+	 *
+	 * Set `touch-action` accordingly on the scrollable element: `pan-x` / `pan-y`
+	 * lets the browser do the native scroll the hook is deferring to.
+	 *
+	 * The second argument carries `pointerType` so the consumer can short-circuit
+	 * by input mode.
 	 */
 	shouldStart?: (
 		firstMove: Position,
@@ -128,6 +137,61 @@ interface CoastingData {
 	target: Position | null
 }
 
+const findScrollableAncestor = (
+	start: EventTarget | null,
+	bound: Element,
+): Element | null => {
+	let element = start instanceof Element ? start : null
+	while (element) {
+		const style = window.getComputedStyle(element)
+		const scrollableY =
+			element.scrollHeight > element.clientHeight &&
+			(style.overflowY === 'auto' || style.overflowY === 'scroll')
+		const scrollableX =
+			element.scrollWidth > element.clientWidth &&
+			(style.overflowX === 'auto' || style.overflowX === 'scroll')
+		if (scrollableX || scrollableY) {
+			return element
+		}
+		if (element === bound) {
+			return null
+		}
+		element = element.parentElement
+	}
+	return null
+}
+
+// Default arming verdict when shouldStart isn't supplied: defer to native scroll
+// while the container has room to move in the gesture's direction; otherwise
+// promote to drag (rubber-band edges).
+const evaluateScrollEdgeAccept = (
+	delta: Position,
+	scrollEl: Element | null,
+): boolean => {
+	if (!scrollEl) {
+		return true
+	}
+	const canScrollUp = scrollEl.scrollTop > 0
+	const canScrollDown =
+		scrollEl.scrollTop < scrollEl.scrollHeight - scrollEl.clientHeight - 1
+	const canScrollLeft = scrollEl.scrollLeft > 0
+	const canScrollRight =
+		scrollEl.scrollLeft < scrollEl.scrollWidth - scrollEl.clientWidth - 1
+	if (delta.y > 0 && canScrollUp) {
+		return false
+	}
+	if (delta.y < 0 && canScrollDown) {
+		return false
+	}
+	if (delta.x > 0 && canScrollLeft) {
+		return false
+	}
+	if (delta.x < 0 && canScrollRight) {
+		return false
+	}
+	return true
+}
+
 export const useDrag = (options: UseDragOptions) => {
 	const {
 		onRelativePositionChange,
@@ -147,9 +211,13 @@ export const useDrag = (options: UseDragOptions) => {
 	const velocityResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const animationFrameRef = useRef<number | null>(null)
 	const coastingStateRef = useRef<CoastingData | null>(null)
-	// Set on pointerdown when shouldStart is in play; cleared either on the first
-	// move that gets promoted to a drag or on the move that decides not to drag.
-	const armingRef = useRef<{ pointerId: number } | null>(null)
+	// Set on pointerdown when arming is in play (either shouldStart is provided
+	// or the hook auto-detected a scrollable subtree). Cleared on the first move
+	// that either promotes to a drag or decides not to.
+	const armingRef = useRef<{
+		pointerId: number
+		scrollableAncestor: Element | null
+	} | null>(null)
 	// Synchronous mirror of dragState so the move handler can detect a fresh
 	// arming → dragging promotion within the same callback (state is async).
 	const dragStateRef = useRef<DragState>('resting')
@@ -359,10 +427,20 @@ export const useDrag = (options: UseDragOptions) => {
 			lastMoveRef.current = null
 			setVelocity({ x: 0, y: 0 })
 
-			if (shouldStart) {
+			// Auto-detect a scrollable subtree only when shouldStart isn't provided
+			// and the input has a native scroll fallback to defer to (i.e. not mouse).
+			const scrollableAncestor =
+				!shouldStart && event.pointerType !== 'mouse'
+					? findScrollableAncestor(event.target, event.currentTarget)
+					: null
+
+			if (shouldStart || scrollableAncestor) {
 				// Defer drag start (no preventDefault, no capture) so native gestures
-				// like scroll can still kick in if shouldStart later returns false.
-				armingRef.current = { pointerId: event.pointerId }
+				// like scroll can still kick in if the arming verdict says so.
+				armingRef.current = {
+					pointerId: event.pointerId,
+					scrollableAncestor,
+				}
 				return
 			}
 
@@ -376,9 +454,6 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const handleEnd = useCallback(
 		(byCancellation: boolean) => {
-			if (dragState !== 'dragging' && !shouldStart) {
-				return undefined
-			}
 			return (event: PointerEvent<HTMLElement>) => {
 				// Release happened while still arming → no drag was ever started, just clean up.
 				if (
@@ -438,8 +513,6 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 		},
 		[
-			dragState,
-			shouldStart,
 			offsetPosition,
 			velocity,
 			inertia,
@@ -454,9 +527,6 @@ export const useDrag = (options: UseDragOptions) => {
 	const onPointerCancel = useMemo(() => handleEnd(true), [handleEnd])
 
 	const onPointerMove = useMemo(() => {
-		if (dragState !== 'dragging' && !shouldStart) {
-			return undefined
-		}
 		return (event: PointerEvent<HTMLElement>) => {
 			// Arming branch: decide whether this gesture should become a drag.
 			if (armingRef.current) {
@@ -471,10 +541,13 @@ export const useDrag = (options: UseDragOptions) => {
 				) {
 					return
 				}
-				const accept = shouldStart!(
-					{ x: deltaX, y: deltaY },
-					{ pointerType: event.pointerType },
-				)
+				const delta = { x: deltaX, y: deltaY }
+				const accept = shouldStart
+					? shouldStart(delta, { pointerType: event.pointerType })
+					: evaluateScrollEdgeAccept(
+							delta,
+							armingRef.current.scrollableAncestor,
+						)
 				if (!accept) {
 					armingRef.current = null
 					return
@@ -529,7 +602,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			setOffsetPosition(newOffsetPosition)
 		}
-	}, [dragState, shouldStart, onStart, transitionTo, cancelVelocityReset])
+	}, [shouldStart, onStart, transitionTo, cancelVelocityReset])
 
 	useEffect(() => {
 		onRelativePositionChange({
