@@ -1,20 +1,26 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import { useDrag, type Position } from '../src/index'
+import { useDrag, type PositionWithVelocity } from '../src/index'
 import './styles.css'
 
-const stepped = (originalPosition: number, offsetPosition: number, stepSize: number) =>
-	originalPosition + Math.round(offsetPosition / stepSize) * stepSize
+const stepped = (
+	originalPosition: number,
+	offsetPosition: number,
+	stepSize: number,
+) => originalPosition + Math.round(offsetPosition / stepSize) * stepSize
 
 const VerticalWithSteps = () => {
 	const stepSize = 50
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
-	const onRelativePositionChange = useCallback(({ y }: Position) => {
-		setPositionOffset(y)
-	}, [])
+	const onRelativePositionChange = useCallback(
+		({ y }: PositionWithVelocity) => {
+			setPositionOffset(y)
+		},
+		[],
+	)
 	const onEnd = useCallback(
-		({ y }: Position) => {
+		({ y }: PositionWithVelocity) => {
 			setPosition((position) => stepped(position, y, stepSize))
 			setPositionOffset(0)
 		},

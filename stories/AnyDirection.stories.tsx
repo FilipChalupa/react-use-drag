@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import { useDrag, type Position } from '../src/index'
+import { useDrag, type PositionWithVelocity } from '../src/index'
 import './styles.css'
 
 const AnyDirection = () => {
@@ -8,7 +8,7 @@ const AnyDirection = () => {
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
 	const [velocity, setVelocity] = useState({ x: 0, y: 0 })
 	const onRelativePositionChange = useCallback(
-		({ x, y, velocity }: Position) => {
+		({ x, y, velocity }: PositionWithVelocity) => {
 			setPositionOffset({ x, y })
 			setVelocity(velocity)
 		},
@@ -17,7 +17,7 @@ const AnyDirection = () => {
 	const onStart = useCallback(() => {
 		console.log('Dragging has started')
 	}, [])
-	const onEnd = useCallback(({ x, y, velocity }: Position) => {
+	const onEnd = useCallback(({ x, y, velocity }: PositionWithVelocity) => {
 		console.log(
 			'Dragging has ended at position',
 			{ x, y },

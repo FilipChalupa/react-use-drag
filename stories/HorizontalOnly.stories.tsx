@@ -1,15 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import { useDrag, type Position } from '../src/index'
+import { useDrag, type PositionWithVelocity } from '../src/index'
 import './styles.css'
 
 const HorizontalOnly = () => {
 	const [position, setPosition] = useState(0)
 	const [positionOffset, setPositionOffset] = useState(0)
-	const onRelativePositionChange = useCallback(({ x }: Position) => {
-		setPositionOffset(x)
-	}, [])
-	const onEnd = useCallback(({ x }: Position) => {
+	const onRelativePositionChange = useCallback(
+		({ x }: PositionWithVelocity) => {
+			setPositionOffset(x)
+		},
+		[],
+	)
+	const onEnd = useCallback(({ x }: PositionWithVelocity) => {
 		setPosition((position) => position + x)
 		setPositionOffset(0)
 	}, [])

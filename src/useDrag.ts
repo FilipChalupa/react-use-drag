@@ -19,17 +19,20 @@ export interface Position {
 	x: number
 	/** Pixels relative to the drag start position. */
 	y: number
+}
+
+export interface PositionWithVelocity extends Position {
 	/** Current drag velocity in pixels per second. */
 	velocity: Velocity
 }
 
 export interface UseDragOptions {
 	/** Called when the position changes during dragging. Position is relative to the start. */
-	onRelativePositionChange: (position: Position) => void
+	onRelativePositionChange: (position: PositionWithVelocity) => void
 	/** Optional. Called when the dragging interaction starts. */
 	onStart?: () => void
 	/** Optional. Called when the dragging interaction ends. Receives final relative position. On cancellation x, y and velocity are 0. */
-	onEnd?: (position: Position) => void
+	onEnd?: (position: PositionWithVelocity) => void
 }
 
 /**
