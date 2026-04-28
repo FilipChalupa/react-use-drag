@@ -537,6 +537,12 @@ export const useDrag = (options: UseDragOptions) => {
 				event.preventDefault()
 				cancelVelocityReset()
 				event.currentTarget.releasePointerCapture(event.pointerId)
+				// Block any click the browser fires after pointerup. Capture phase
+				// intercepts before React's root-level synthetic event handler.
+				const el = event.currentTarget
+				const blockClick = (e: Event) => e.stopPropagation()
+				el.addEventListener('click', blockClick, { capture: true })
+				setTimeout(() => el.removeEventListener('click', blockClick, true), 0)
 
 				if (byCancellation) {
 					finishNow({ x: 0, y: 0 }, { x: 0, y: 0 })
