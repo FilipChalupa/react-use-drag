@@ -767,12 +767,15 @@ export const useDrag = (options: UseDragOptions) => {
 	}, [shouldStart, onStart, transitionTo, cancelVelocityReset])
 
 	useEffect(() => {
+		if (dragState === 'resting') {
+			return
+		}
 		onRelativePositionChange({
 			x: offsetPosition.x,
 			y: offsetPosition.y,
 			velocity,
 		})
-	}, [offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
+	}, [dragState, offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
 
 	const elementProps = useMemo(
 		() => ({
