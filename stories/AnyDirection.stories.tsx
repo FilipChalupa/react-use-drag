@@ -51,6 +51,9 @@ const AnyDirection = () => {
 			<button
 				className="draggable"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
+				onClick={() => {
+					alert('You have clicked me!')
+				}}
 				{...elementProps}
 			>
 				{state === 'resting' ? '🧍' : '🚶'}
