@@ -195,6 +195,11 @@ export const useDrag = (options: UseDragOptions) => {
 		onEndRef.current = onEnd
 	}, [onEnd])
 
+	// Set to true just before each onEnd call so the effect that fires when
+	// offsetPosition/velocity resets to zero (which happens in the same batch)
+	// can skip that spurious onRelativePositionChange invocation.
+	const suppressNextPositionChangeRef = useRef(false)
+
 	const transitionTo = useCallback((next: DragState) => {
 		dragStateRef.current = next
 		setDragState(next)
@@ -234,6 +239,7 @@ export const useDrag = (options: UseDragOptions) => {
 			animationFrameRef.current = null
 			coastingStateRef.current = null
 			transitionTo('resting')
+			suppressNextPositionChangeRef.current = true
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
@@ -413,6 +419,7 @@ export const useDrag = (options: UseDragOptions) => {
 	const finishNow = useCallback(
 		(position: Position, finalVelocity: Velocity) => {
 			transitionTo('resting')
+			suppressNextPositionChangeRef.current = true
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
@@ -434,6 +441,7 @@ export const useDrag = (options: UseDragOptions) => {
 				animationFrameRef.current = null
 				const inFlight = coastingStateRef.current
 				if (inFlight) {
+					suppressNextPositionChangeRef.current = true
 					onEndRef.current?.({
 						x: inFlight.lastPosition.x,
 						y: inFlight.lastPosition.y,
@@ -767,7 +775,8 @@ export const useDrag = (options: UseDragOptions) => {
 	}, [shouldStart, onStart, transitionTo, cancelVelocityReset])
 
 	useEffect(() => {
-		if (dragState === 'resting') {
+		if (suppressNextPositionChangeRef.current) {
+			suppressNextPositionChangeRef.current = false
 			return
 		}
 		onRelativePositionChange({
@@ -775,7 +784,7 @@ export const useDrag = (options: UseDragOptions) => {
 			y: offsetPosition.y,
 			velocity,
 		})
-	}, [dragState, offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
+	}, [offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
 
 	const elementProps = useMemo(
 		() => ({
