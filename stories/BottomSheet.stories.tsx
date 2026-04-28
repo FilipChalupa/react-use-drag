@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useState } from 'react'
-import {
-	useDrag,
-	type Position,
-	type PositionWithVelocity,
-} from '../src/index'
+import { useDrag, type Position, type PositionWithVelocity } from '../src/index'
 import { sourceLink } from './sourceLink'
 import './styles.css'
 
@@ -77,7 +73,9 @@ const SwipeItem = ({ item, onArchive, onMarkRead }: SwipeItemProps) => {
 			<div className="swipe-row-action swipe-row-action-left">Archive</div>
 			<div className="swipe-row-action swipe-row-action-right">Snooze</div>
 			<div
-				className={`swipe-row-content ${state === 'dragging' || isArchiving ? '' : 'is-settled'}`}
+				className={`swipe-row-content ${
+					state === 'dragging' || isArchiving ? '' : 'is-settled'
+				}`}
 				style={{ '--x': `${offset}px` } as React.CSSProperties}
 				onClick={() => onMarkRead(item.id)}
 				{...(isArchiving ? {} : elementProps)}

@@ -55,15 +55,21 @@ const HorizontalResize = () => {
 				}
 			>
 				<button
-				onClick={() => {
-					alert('You have clicked the left side!')
-				}}
-				{...leftElementProps}>←</button>
+					onClick={() => {
+						alert('You have clicked the left side!')
+					}}
+					{...leftElementProps}
+				>
+					←
+				</button>
 				<button
-				onClick={() => {
-					alert('You have clicked the right side!')
-				}}
-				{...rightElementProps}>→</button>
+					onClick={() => {
+						alert('You have clicked the right side!')
+					}}
+					{...rightElementProps}
+				>
+					→
+				</button>
 			</div>
 		</div>
 	)
@@ -77,7 +83,9 @@ const meta: Meta<typeof HorizontalResize> = {
 		layout: 'centered',
 		docs: {
 			description: {
-				component: `Two independent drag handles resize a box. The ← handle extends the left edge, the → handle extends the right edge. Neither handle can cross the other — \`Math.min\`/\`Math.max\` clamps keep them apart. Each handle uses its own \`useDrag\` instance.\n\n${sourceLink('HorizontalResize.stories.tsx')}`,
+				component: `Two independent drag handles resize a box. The ← handle extends the left edge, the → handle extends the right edge. Neither handle can cross the other — \`Math.min\`/\`Math.max\` clamps keep them apart. Each handle uses its own \`useDrag\` instance.\n\n${sourceLink(
+					'HorizontalResize.stories.tsx',
+				)}`,
 			},
 		},
 	},

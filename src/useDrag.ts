@@ -559,7 +559,10 @@ export const useDrag = (options: UseDragOptions) => {
 
 				if (useSnap && !useInertia) {
 					const target = chooseSnapPoint(
-						projectInertiaEndpoint(offsetPositionRef.current, velocityRef.current),
+						projectInertiaEndpoint(
+							offsetPositionRef.current,
+							velocityRef.current,
+						),
 						snapPoints,
 					)
 					finishNow(target, { x: 0, y: 0 })
@@ -579,7 +582,10 @@ export const useDrag = (options: UseDragOptions) => {
 				const target =
 					useSnap && snapPoints
 						? chooseSnapPoint(
-								projectInertiaEndpoint(offsetPositionRef.current, velocityRef.current),
+								projectInertiaEndpoint(
+									offsetPositionRef.current,
+									velocityRef.current,
+								),
 								snapPoints,
 							)
 						: null

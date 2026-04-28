@@ -29,9 +29,10 @@ const VerticalOnly = () => {
 				{
 					'--y': `${position + positionOffset}px`,
 				} as React.CSSProperties
-			}onClick={() => {
-					alert('You have clicked me!')
-				}}
+			}
+			onClick={() => {
+				alert('You have clicked me!')
+			}}
 			{...elementProps}
 		>
 			↕️
@@ -47,7 +48,9 @@ const meta: Meta<typeof VerticalOnly> = {
 		layout: 'centered',
 		docs: {
 			description: {
-				component: `Drag the button up or down. Horizontal movement is ignored — only the \`y\` value from \`onRelativePositionChange\` is applied.\n\n${sourceLink('VerticalOnly.stories.tsx')}`,
+				component: `Drag the button up or down. Horizontal movement is ignored — only the \`y\` value from \`onRelativePositionChange\` is applied.\n\n${sourceLink(
+					'VerticalOnly.stories.tsx',
+				)}`,
 			},
 		},
 	},

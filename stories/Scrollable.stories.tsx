@@ -7,7 +7,9 @@ import './styles.css'
 const lipsumLines = Array.from(
 	{ length: 24 },
 	(_, index) =>
-		`${index + 1}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.`,
+		`${
+			index + 1
+		}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.`,
 )
 
 const Scrollable = () => {
@@ -58,7 +60,9 @@ const meta: Meta<typeof Scrollable> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component: `A draggable card with content that scrolls in **both directions** inside. On touch input the first move's dominant axis decides between drag and scroll: if the inner content has room to scroll in that axis, the hook drives the scroll itself (with momentum on release and an axis lock so diagonal drift doesn't pollute the direction); otherwise it drags the card. Once the verdict picks scroll, the gesture stays in scroll for its lifetime — releasing and re-pressing is needed to drag from the edge. On mouse input the card always drags immediately; use the scroll wheel and shift+wheel to scroll the content.\n\nNo \`shouldStart\` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element needs \`touch-action: none\` so the browser doesn't claim the gesture before the hook can evaluate it.\n\n${sourceLink('Scrollable.stories.tsx')}`,
+				component: `A draggable card with content that scrolls in **both directions** inside. On touch input the first move's dominant axis decides between drag and scroll: if the inner content has room to scroll in that axis, the hook drives the scroll itself (with momentum on release and an axis lock so diagonal drift doesn't pollute the direction); otherwise it drags the card. Once the verdict picks scroll, the gesture stays in scroll for its lifetime — releasing and re-pressing is needed to drag from the edge. On mouse input the card always drags immediately; use the scroll wheel and shift+wheel to scroll the content.\n\nNo \`shouldStart\` callback needed — the hook auto-detects the scrollable element by walking from the pointer event target up to the drag root. The element needs \`touch-action: none\` so the browser doesn't claim the gesture before the hook can evaluate it.\n\n${sourceLink(
+					'Scrollable.stories.tsx',
+				)}`,
 			},
 		},
 	},

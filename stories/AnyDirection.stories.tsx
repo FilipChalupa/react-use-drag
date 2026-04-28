@@ -43,11 +43,9 @@ const AnyDirection = () => {
 
 	return (
 		<div className="demo-canvas">
-			<pre className="readout">{`x: ${Math.round(
-				x,
-			)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(
-				velocity.y,
-			)}`}</pre>
+			<pre className="readout">{`x: ${Math.round(x)}\ny: ${Math.round(
+				y,
+			)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(velocity.y)}`}</pre>
 			<button
 				className="draggable"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
@@ -70,7 +68,9 @@ const meta: Meta<typeof AnyDirection> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component: `Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the \`state\` value.\n\n${sourceLink('AnyDirection.stories.tsx')}`,
+				component: `Drag the button freely in any direction. Position accumulates across drags — releasing the button locks in the new position. The icon switches between 🧍 and 🚶 while dragging, showing the \`state\` value.\n\n${sourceLink(
+					'AnyDirection.stories.tsx',
+				)}`,
 			},
 		},
 	},

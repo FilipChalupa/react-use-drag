@@ -6,10 +6,8 @@ import './styles.css'
 
 const stepSize = 50
 
-const stepped = (
-	originalPosition: number,
-	offsetPosition: number,
-) => originalPosition + Math.round(offsetPosition / stepSize) * stepSize
+const stepped = (originalPosition: number, offsetPosition: number) =>
+	originalPosition + Math.round(offsetPosition / stepSize) * stepSize
 
 const HorizontalWithSteps = () => {
 	const [position, setPosition] = useState(0)
@@ -38,8 +36,8 @@ const HorizontalWithSteps = () => {
 				} as React.CSSProperties
 			}
 			onClick={() => {
-					alert('You have clicked me!')
-				}}
+				alert('You have clicked me!')
+			}}
 			{...elementProps}
 		>
 			↔️
@@ -55,7 +53,9 @@ const meta: Meta<typeof HorizontalWithSteps> = {
 		layout: 'centered',
 		docs: {
 			description: {
-				component: `Drag the button left or right. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Vertical movement is ignored.\n\n${sourceLink('HorizontalWithSteps.stories.tsx')}`,
+				component: `Drag the button left or right. The position snaps to a 50 px grid — it jumps in discrete steps both during the drag and when released. Vertical movement is ignored.\n\n${sourceLink(
+					'HorizontalWithSteps.stories.tsx',
+				)}`,
 			},
 		},
 	},
