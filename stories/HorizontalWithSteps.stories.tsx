@@ -37,6 +37,9 @@ const HorizontalWithSteps = () => {
 					'--x': `${stepped(position, positionOffset)}px`,
 				} as React.CSSProperties
 			}
+			onClick={() => {
+					alert('You have clicked me!')
+				}}
 			{...elementProps}
 		>
 			↔️

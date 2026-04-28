@@ -54,8 +54,16 @@ const HorizontalResize = () => {
 					} as React.CSSProperties
 				}
 			>
-				<button {...leftElementProps}>←</button>
-				<button {...rightElementProps}>→</button>
+				<button
+				onClick={() => {
+					alert('You have clicked the left side!')
+				}}
+				{...leftElementProps}>←</button>
+				<button
+				onClick={() => {
+					alert('You have clicked the right side!')
+				}}
+				{...rightElementProps}>→</button>
 			</div>
 		</div>
 	)

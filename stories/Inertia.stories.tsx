@@ -82,6 +82,9 @@ const Inertia = ({ inertia, useSnapPoints }: InertiaArgs) => {
 			<button
 				className="draggable"
 				style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}
+				onClick={() => {
+					alert('You have clicked me!')
+				}}
 				{...elementProps}
 			>
 				{state === 'dragging' ? '🚶' : state === 'coasting' ? '💨' : '🧍'}
