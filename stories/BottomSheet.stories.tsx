@@ -79,15 +79,13 @@ const SwipeItem = ({ item, onArchive, onMarkRead }: SwipeItemProps) => {
 			<div
 				className={`swipe-row-content ${state === 'dragging' || isArchiving ? '' : 'is-settled'}`}
 				style={{ '--x': `${offset}px` } as React.CSSProperties}
+				onClick={() => onMarkRead(item.id)}
 				{...(isArchiving ? {} : elementProps)}
 			>
-				<button
-					className={`swipe-row-subject${item.isRead ? ' is-read' : ''}`}
-					onClick={() => onMarkRead(item.id)}
-				>
+				<div className={`swipe-row-subject${item.isRead ? ' is-read' : ''}`}>
 					{!item.isRead && <span className="swipe-row-unread-dot" />}
 					{item.subject}
-				</button>
+				</div>
 				<div className="swipe-row-preview">{item.preview}</div>
 			</div>
 		</div>
