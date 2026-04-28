@@ -12,6 +12,7 @@ interface MailItem {
 	id: number
 	subject: string
 	preview: string
+	isRead: boolean
 }
 
 const initialMail: MailItem[] = Array.from({ length: 14 }, (_, index) => ({
@@ -19,6 +20,7 @@ const initialMail: MailItem[] = Array.from({ length: 14 }, (_, index) => ({
 	subject: `Subject ${index + 1}: lorem ipsum dolor sit amet`,
 	preview:
 		'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor.',
+	isRead: false,
 }))
 
 const archiveThreshold = 100
@@ -28,9 +30,10 @@ const archiveAnimationMilliseconds = 200
 interface SwipeItemProps {
 	item: MailItem
 	onArchive: (id: number) => void
+	onMarkRead: (id: number) => void
 }
 
-const SwipeItem = ({ item, onArchive }: SwipeItemProps) => {
+const SwipeItem = ({ item, onArchive, onMarkRead }: SwipeItemProps) => {
 	const [offset, setOffset] = useState(0)
 	const [isArchiving, setIsArchiving] = useState(false)
 
@@ -78,7 +81,13 @@ const SwipeItem = ({ item, onArchive }: SwipeItemProps) => {
 				style={{ '--x': `${offset}px` } as React.CSSProperties}
 				{...(isArchiving ? {} : elementProps)}
 			>
-				<div className="swipe-row-subject">{item.subject}</div>
+				<button
+					className={`swipe-row-subject${item.isRead ? ' is-read' : ''}`}
+					onClick={() => onMarkRead(item.id)}
+				>
+					{!item.isRead && <span className="swipe-row-unread-dot" />}
+					{item.subject}
+				</button>
 				<div className="swipe-row-preview">{item.preview}</div>
 			</div>
 		</div>
@@ -110,6 +119,14 @@ const BottomSheet = () => {
 		setItems((previous) => previous.filter((item) => item.id !== id))
 	}, [])
 
+	const handleMarkRead = useCallback((id: number) => {
+		setItems((previous) =>
+			previous.map((item) =>
+				item.id === id ? { ...item, isRead: true } : item,
+			),
+		)
+	}, [])
+
 	const y = position.y + positionOffset.y
 
 	return (
@@ -128,6 +145,7 @@ const BottomSheet = () => {
 								key={item.id}
 								item={item}
 								onArchive={handleArchive}
+								onMarkRead={handleMarkRead}
 							/>
 						))
 					) : (
