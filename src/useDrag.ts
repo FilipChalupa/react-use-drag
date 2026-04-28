@@ -51,9 +51,8 @@ export interface UseDragOptions {
 	 * Optional. Called when the interaction fully ends. With `inertia` or `snapPoints`
 	 * this fires only after the coasting animation settles. Receives the final
 	 * relative position. On cancellation x, y and velocity are 0. The final snap
-	 * target is delivered through this callback — `onRelativePositionChange` may
-	 * not emit it, because the hook resets its internal offset in the same React
-	 * batch.
+	 * target is delivered through this callback — `onRelativePositionChange` does
+	 * not emit the end position.
 	 */
 	onEnd?: (position: PositionWithVelocity) => void
 	/** Optional. When true, the element keeps moving after release with friction-based deceleration until it settles. */
@@ -138,8 +137,8 @@ export const useDrag = (options: UseDragOptions) => {
 	} = options
 	const [dragState, setDragState] = useState<DragState>('resting')
 	const startPosition = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
-	const [offsetPosition, setOffsetPosition] = useState({ x: 0, y: 0 })
-	const [velocity, setVelocity] = useState<Velocity>({ x: 0, y: 0 })
+	const offsetPositionRef = useRef<Position>({ x: 0, y: 0 })
+	const velocityRef = useRef<Velocity>({ x: 0, y: 0 })
 	const lastMoveRef = useRef<{ time: number; x: number; y: number } | null>(
 		null,
 	)
@@ -187,18 +186,16 @@ export const useDrag = (options: UseDragOptions) => {
 	// the global claim on pointerup/cancel/unmount without scanning the set.
 	const claimedPointerRef = useRef<number | null>(null)
 
-	// Latest onEnd kept in a ref so the requestAnimationFrame loop and the
-	// abort-on-grab path always reach the current callback even after an
-	// in-flight coasting animation captured an older closure.
+	// Keep latest callbacks in refs so rAF loops and async paths always reach
+	// the current version without needing them in useCallback dep arrays.
 	const onEndRef = useRef(onEnd)
 	useEffect(() => {
 		onEndRef.current = onEnd
 	}, [onEnd])
-
-	// Set to true just before each onEnd call so the effect that fires when
-	// offsetPosition/velocity resets to zero (which happens in the same batch)
-	// can skip that spurious onRelativePositionChange invocation.
-	const suppressNextPositionChangeRef = useRef(false)
+	const onRelativePositionChangeRef = useRef(onRelativePositionChange)
+	useEffect(() => {
+		onRelativePositionChangeRef.current = onRelativePositionChange
+	}, [onRelativePositionChange])
 
 	const transitionTo = useCallback((next: DragState) => {
 		dragStateRef.current = next
@@ -239,14 +236,13 @@ export const useDrag = (options: UseDragOptions) => {
 			animationFrameRef.current = null
 			coastingStateRef.current = null
 			transitionTo('resting')
-			suppressNextPositionChangeRef.current = true
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
 				velocity: finalVelocity,
 			})
-			setOffsetPosition({ x: 0, y: 0 })
-			setVelocity({ x: 0, y: 0 })
+			offsetPositionRef.current = { x: 0, y: 0 }
+			velocityRef.current = { x: 0, y: 0 }
 			lastMoveRef.current = null
 		},
 		[transitionTo],
@@ -323,12 +319,17 @@ export const useDrag = (options: UseDragOptions) => {
 			data.lastPosition = nextPosition
 			data.lastVelocity = nextVelocity
 			data.lastFrameTime = now
-			setOffsetPosition(nextPosition)
-			setVelocity(nextVelocity)
 
 			if (done) {
 				finishCoasting(nextPosition, nextVelocity)
 			} else {
+				offsetPositionRef.current = nextPosition
+				velocityRef.current = nextVelocity
+				onRelativePositionChangeRef.current({
+					x: nextPosition.x,
+					y: nextPosition.y,
+					velocity: nextVelocity,
+				})
 				animationFrameRef.current = requestAnimationFrame(step)
 			}
 		},
@@ -419,14 +420,13 @@ export const useDrag = (options: UseDragOptions) => {
 	const finishNow = useCallback(
 		(position: Position, finalVelocity: Velocity) => {
 			transitionTo('resting')
-			suppressNextPositionChangeRef.current = true
 			onEndRef.current?.({
 				x: position.x,
 				y: position.y,
 				velocity: finalVelocity,
 			})
-			setOffsetPosition({ x: 0, y: 0 })
-			setVelocity({ x: 0, y: 0 })
+			offsetPositionRef.current = { x: 0, y: 0 }
+			velocityRef.current = { x: 0, y: 0 }
 			lastMoveRef.current = null
 		},
 		[transitionTo],
@@ -441,15 +441,14 @@ export const useDrag = (options: UseDragOptions) => {
 				animationFrameRef.current = null
 				const inFlight = coastingStateRef.current
 				if (inFlight) {
-					suppressNextPositionChangeRef.current = true
 					onEndRef.current?.({
 						x: inFlight.lastPosition.x,
 						y: inFlight.lastPosition.y,
 						velocity: { x: 0, y: 0 },
 					})
 					coastingStateRef.current = null
-					setOffsetPosition({ x: 0, y: 0 })
-					setVelocity({ x: 0, y: 0 })
+					offsetPositionRef.current = { x: 0, y: 0 }
+					velocityRef.current = { x: 0, y: 0 }
 				}
 				// Scroll coasting: just halt it, no consumer callbacks (scroll is internal).
 				scrollCoastingRef.current = null
@@ -469,7 +468,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			cancelVelocityReset()
 			lastMoveRef.current = null
-			setVelocity({ x: 0, y: 0 })
+			velocityRef.current = { x: 0, y: 0 }
 
 			// Auto-detect a scrollable subtree only when shouldStart isn't provided
 			// and the input is touch/pen — mouse has no scroll-by-drag, so the
@@ -548,13 +547,13 @@ export const useDrag = (options: UseDragOptions) => {
 				const useSnap = !!snapPoints && snapPoints.length > 0
 
 				if (!useInertia && !useSnap) {
-					finishNow(offsetPosition, velocity)
+					finishNow(offsetPositionRef.current, velocityRef.current)
 					return
 				}
 
 				if (useSnap && !useInertia) {
 					const target = chooseSnapPoint(
-						projectInertiaEndpoint(offsetPosition, velocity),
+						projectInertiaEndpoint(offsetPositionRef.current, velocityRef.current),
 						snapPoints,
 					)
 					finishNow(target, { x: 0, y: 0 })
@@ -564,26 +563,24 @@ export const useDrag = (options: UseDragOptions) => {
 				if (
 					useInertia &&
 					!useSnap &&
-					Math.abs(velocity.x) < settleVelocityThreshold &&
-					Math.abs(velocity.y) < settleVelocityThreshold
+					Math.abs(velocityRef.current.x) < settleVelocityThreshold &&
+					Math.abs(velocityRef.current.y) < settleVelocityThreshold
 				) {
-					finishNow(offsetPosition, velocity)
+					finishNow(offsetPositionRef.current, velocityRef.current)
 					return
 				}
 
 				const target =
 					useSnap && snapPoints
 						? chooseSnapPoint(
-								projectInertiaEndpoint(offsetPosition, velocity),
+								projectInertiaEndpoint(offsetPositionRef.current, velocityRef.current),
 								snapPoints,
 							)
 						: null
-				startCoasting(target, offsetPosition, velocity)
+				startCoasting(target, offsetPositionRef.current, velocityRef.current)
 			}
 		},
 		[
-			offsetPosition,
-			velocity,
 			inertia,
 			snapPoints,
 			cancelVelocityReset,
@@ -757,10 +754,15 @@ export const useDrag = (options: UseDragOptions) => {
 								deltaMilliseconds) *
 							1000,
 					}
-					setVelocity(newVelocity)
+					velocityRef.current = newVelocity
 					cancelVelocityReset()
 					velocityResetRef.current = setTimeout(() => {
-						setVelocity({ x: 0, y: 0 })
+						velocityRef.current = { x: 0, y: 0 }
+						onRelativePositionChangeRef.current({
+							x: offsetPositionRef.current.x,
+							y: offsetPositionRef.current.y,
+							velocity: { x: 0, y: 0 },
+						})
 						velocityResetRef.current = null
 					}, velocityResetDelayInMilliseconds)
 				}
@@ -770,21 +772,14 @@ export const useDrag = (options: UseDragOptions) => {
 				x: newOffsetPosition.x,
 				y: newOffsetPosition.y,
 			}
-			setOffsetPosition(newOffsetPosition)
+			offsetPositionRef.current = newOffsetPosition
+			onRelativePositionChangeRef.current({
+				x: newOffsetPosition.x,
+				y: newOffsetPosition.y,
+				velocity: velocityRef.current,
+			})
 		}
 	}, [shouldStart, onStart, transitionTo, cancelVelocityReset])
-
-	useEffect(() => {
-		if (suppressNextPositionChangeRef.current) {
-			suppressNextPositionChangeRef.current = false
-			return
-		}
-		onRelativePositionChange({
-			x: offsetPosition.x,
-			y: offsetPosition.y,
-			velocity,
-		})
-	}, [offsetPosition.x, offsetPosition.y, velocity, onRelativePositionChange])
 
 	const elementProps = useMemo(
 		() => ({
