@@ -11,7 +11,7 @@
 		"build": "rollup -c",
 		"dev": "npm run storybook",
 		"prepare": "npm run build",
-		"lint": "eslint .",
+		"lint": "eslint . && prettier --check .",
 		"type-check": "tsc --noEmit",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build"
