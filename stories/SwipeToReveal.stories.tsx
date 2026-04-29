@@ -63,7 +63,7 @@ const SwipeToReveal = () => {
 	const handleTap = useCallback((id: number) => {
 		setItems((previous) =>
 			previous.map((item) =>
-				item.id === id ? { ...item, isRead: true } : item,
+				item.id === id ? { ...item, isRead: !item.isRead } : item,
 			),
 		)
 	}, [])
