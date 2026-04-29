@@ -3,10 +3,10 @@ import type { Position, Velocity } from './useDrag'
 // Exponent k in v(t) = v0 · e^(-k·t); projected travel = v0 / k.
 export const inertiaFrictionPerSecond = 6
 // px/s; below this on both axes coasting is considered settled.
-export const settleVelocityThreshold = 20
+export const settleVelocityThreshold = 2
 // px; spring is considered settled below this distance from target.
 export const snapDistanceThreshold = 0.5
-export const snapStiffness = 180
+export const snapStiffness = 400
 // Critical damping — never overshoots.
 export const snapDamping = 2 * Math.sqrt(snapStiffness)
 // Clamp dt so a backgrounded tab can't blow up the spring.
