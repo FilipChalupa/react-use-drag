@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useDrag, type Position, type PositionWithVelocity } from '../src/index'
 import { sourceLink } from './sourceLink'
 import './styles.css'
@@ -74,31 +74,26 @@ interface SwipeRowProps {
 }
 
 const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
-	// snapBase tracks the world-space settled position (0, ±actionWidth).
-	// Kept in both state (to recompute memoized snapPoints) and a ref (for
-	// synchronous access inside onRelativePositionChange / onEnd callbacks).
+	// snapBase = world-space settled position (0, ±actionWidth). Distinct from
+	// offset (which changes every drag frame) so snapPoints stay stable during drag.
 	const [snapBase, setSnapBase] = useState(0)
-	const snapBaseRef = useRef(0)
 	const [offset, setOffset] = useState(0)
 	const [isDismissing, setIsDismissing] = useState(false)
 
-	const updateSnap = useCallback((value: number) => {
-		snapBaseRef.current = value
-		setSnapBase(value)
-	}, [])
-
 	// Translate world-space snap positions into drag-relative coordinates so
-	// useDrag can own the snap-point selection and spring animation.
+	// useDrag can own snap-point selection and the spring animation.
 	const snapPoints = useMemo(
 		() => worldSnapX.map((x) => ({ x: x - snapBase, y: 0 })),
 		[snapBase],
 	)
 
+	// The hook keeps callbacks in refs (onRelativePositionChangeRef, onEndRef),
+	// so it always calls the latest version — snapBase in deps is safe.
 	const onRelativePositionChange = useCallback(
 		({ x }: PositionWithVelocity) => {
-			setOffset(snapBaseRef.current + x)
+			setOffset(snapBase + x)
 		},
-		[],
+		[snapBase],
 	)
 
 	// onEnd receives the exact settled snap-point position (drag-relative).
@@ -106,17 +101,17 @@ const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
 	// we set offset explicitly to avoid a sub-pixel jump on the last frame.
 	const onEnd = useCallback(
 		({ x }: PositionWithVelocity) => {
-			const worldX = snapBaseRef.current + x
+			const worldX = snapBase + x
 			setOffset(worldX)
 			if (Math.abs(worldX) > actionWidth * 1.5) {
 				setIsDismissing(true)
 				if (worldX > 0) onArchive(item.id)
 				else onSnooze(item.id)
 			} else {
-				updateSnap(worldX)
+				setSnapBase(worldX)
 			}
 		},
-		[item.id, onArchive, onSnooze, updateSnap],
+		[snapBase, item.id, onArchive, onSnooze],
 	)
 
 	// Button-click dismiss: hook is idle, so drive the exit via CSS transition.
