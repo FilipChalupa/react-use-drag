@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useDrag, type PositionWithVelocity } from '../src/index'
 import { sourceLink } from './sourceLink'
 import { SwipeRow, type MailItem } from './SwipeRow'
@@ -30,9 +30,19 @@ const BottomSheet = () => {
 		setPositionOffset({ x: 0, y: 0 })
 	}, [])
 
+	const snapPoints = useMemo(
+		() => [
+			{ x: -position.x, y: -position.y },
+			{ x: -position.x, y: 300 - position.y },
+		],
+		[position.x, position.y],
+	)
+
 	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
 		onEnd,
+		snapPoints,
+		inertia: true,
 	})
 
 	const handleArchive = useCallback((id: number) => {
