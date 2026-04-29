@@ -152,23 +152,23 @@ const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
 			className={`swipe-row${dragDirection ? ` is-pulling-${dragDirection}` : ''}`}
 			style={swipeBg ? ({ '--swipe-bg': swipeBg } as React.CSSProperties) : undefined}
 		>
-			<div
+			<button
 				className={`swipe-row-action swipe-row-action-left${
 					archiveActive ? ' is-active' : ''
 				}`}
 				onClick={() => dismiss(1)}
 			>
 				Archive
-			</div>
-			<div
+			</button>
+			<button
 				className={`swipe-row-action swipe-row-action-right${
 					snoozeActive ? ' is-active' : ''
 				}`}
 				onClick={() => dismiss(-1)}
 			>
 				Snooze
-			</div>
-			<div
+			</button>
+			<button
 				className={`swipe-row-content${
 					state === 'resting' ? ' is-settled' : ''
 				}`}
@@ -182,7 +182,7 @@ const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
 				</div>
 				<div className="swipe-row-sender">{item.sender}</div>
 				<div className="swipe-row-preview">{item.preview}</div>
-			</div>
+			</button>
 		</div>
 	)
 }
