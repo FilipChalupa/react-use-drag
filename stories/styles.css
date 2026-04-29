@@ -202,7 +202,7 @@ button {
 	border: none;
 	font-family: inherit;
 	text-align: left;
-	touch-action: none;
+	touch-action: pan-y;
 	user-select: none;
 	translate: var(--x, 0);
 	cursor: pointer;
