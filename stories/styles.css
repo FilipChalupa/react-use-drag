@@ -242,6 +242,11 @@ button {
 	filter: brightness(1.2);
 }
 
+.swipe-row.is-pulling-right .swipe-row-action-right,
+.swipe-row.is-pulling-left .swipe-row-action-left {
+	visibility: hidden;
+}
+
 .swipe-list-canvas {
 	display: flex;
 	flex-direction: column;
