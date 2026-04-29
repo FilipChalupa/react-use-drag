@@ -143,8 +143,14 @@ const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
 	const archiveActive = offset > actionWidth / 2
 	const snoozeActive = offset < -actionWidth / 2
 
+	const swipeBg =
+		offset > 0 ? '#2e7d32' : offset < 0 ? '#ef6c00' : undefined
+
 	return (
-		<div className="swipe-row">
+		<div
+			className="swipe-row"
+			style={swipeBg ? ({ '--swipe-bg': swipeBg } as React.CSSProperties) : undefined}
+		>
 			<div
 				className={`swipe-row-action swipe-row-action-left${
 					archiveActive ? ' is-active' : ''

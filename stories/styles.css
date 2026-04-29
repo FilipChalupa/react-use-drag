@@ -160,7 +160,7 @@ button {
 	position: relative;
 	overflow: hidden;
 	border-bottom: 1px solid #eee;
-	background: #fff;
+	background: var(--swipe-bg, #fff);
 }
 
 .swipe-row-action {
