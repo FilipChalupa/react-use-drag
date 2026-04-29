@@ -249,7 +249,9 @@ const meta: Meta<typeof SwipeToReveal> = {
 			description: {
 				component: `A classic mobile inbox pattern: swipe a row **right** to reveal the green **Archive** action, swipe **left** to reveal the orange **Snooze** action. Release past the threshold to trigger; release early to snap back.
 
-Each row is its own \`useDrag\` instance. The \`shouldStart\` callback ensures only horizontal-dominant gestures are captured, so vertical scroll still works naturally when rows are inside a scrollable container.
+Each row is its own \`useDrag\` instance. The \`shouldStart\` callback ensures only horizontal-dominant gestures are captured.
+
+**Works inside a scrollable container.** When \`shouldStart\` is provided, the hook never auto-detects a scrollable ancestor — so vertical scroll has to come from the browser directly. That's why the row uses \`touch-action: pan-y\` instead of \`touch-action: none\`: the browser owns vertical panning, the hook owns horizontal swipes. For a purely horizontal gesture the hook calls \`setPointerCapture\` before the browser can intervene; for a vertical one it releases cleanly and the browser takes over.
 
 ${sourceLink('SwipeToReveal.stories.tsx')}`,
 			},
