@@ -148,9 +148,17 @@ export const useDrag = (options: UseDragOptions) => {
 	// Set on pointerdown when arming is in play (either shouldStart is provided
 	// or the hook auto-detected a scrollable subtree). Cleared on the first move
 	// that either promotes to a drag or decides not to.
+	// Known limitation: for mouse without shouldStart, setPointerCapture is not
+	// called on pointerdown (doing so would break nested-hook coordination). If
+	// the pointer exits the element before the 5 px arming threshold fires, the
+	// subsequent pointermove and pointerup events miss our handlers and armingRef
+	// is left stale. The buttons === 0 guard in onPointerMove self-heals the
+	// state when the cursor next enters the element, but until then armingRef
+	// holds a stale pointerId that would incorrectly promote a hover into a drag.
 	const armingRef = useRef<{
 		pointerId: number
 		scrollableAncestor: Element | null
+		capturedOnPointerDown: boolean
 	} | null>(null)
 	// Set when the hook is taking over native scroll manually (after the arming
 	// verdict said "defer to scroll" and there's a scroll container). Each move
@@ -483,9 +491,15 @@ export const useDrag = (options: UseDragOptions) => {
 			// the gesture path, the innermost evaluates first via React's natural
 			// pointer-event bubble and the global `claimedPointers` set keeps
 			// outers from also claiming once an inner has committed.
+			const capturedOnPointerDown =
+				!!shouldStart && event.pointerType === 'mouse'
+			if (capturedOnPointerDown) {
+				event.currentTarget.setPointerCapture(event.pointerId)
+			}
 			armingRef.current = {
 				pointerId: event.pointerId,
 				scrollableAncestor,
+				capturedOnPointerDown,
 			}
 		},
 		[shouldStart, cancelVelocityReset],
@@ -665,6 +679,14 @@ export const useDrag = (options: UseDragOptions) => {
 					armingRef.current = null
 					return
 				}
+				// Mouse button released outside while arming — stale state, discard.
+				if (event.pointerType === 'mouse' && event.buttons === 0) {
+					if (armingRef.current.capturedOnPointerDown) {
+						event.currentTarget.releasePointerCapture(event.pointerId)
+					}
+					armingRef.current = null
+					return
+				}
 				const deltaX = event.clientX - startPosition.current.x
 				const deltaY = event.clientY - startPosition.current.y
 				if (
@@ -718,6 +740,9 @@ export const useDrag = (options: UseDragOptions) => {
 					}
 					// No scroll target — release without claiming so the gesture can
 					// bubble to an outer useDrag that may want it.
+					if (armingRef.current.capturedOnPointerDown) {
+						event.currentTarget.releasePointerCapture(event.pointerId)
+					}
 					armingRef.current = null
 					return
 				}
