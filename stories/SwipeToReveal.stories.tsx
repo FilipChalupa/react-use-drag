@@ -143,14 +143,17 @@ const SwipeRow = ({ item, onArchive, onSnooze, onTap }: SwipeRowProps) => {
 	const archiveActive = offset > actionWidth / 2
 	const snoozeActive = offset < -actionWidth / 2
 
-	const swipeBg =
-		offset > 0 ? '#2e7d32' : offset < 0 ? '#ef6c00' : undefined
+	const swipeBg = offset > 0 ? '#2e7d32' : offset < 0 ? '#ef6c00' : undefined
 	const dragDirection = offset > 0 ? 'right' : offset < 0 ? 'left' : null
 
 	return (
 		<div
-			className={`swipe-row${dragDirection ? ` is-pulling-${dragDirection}` : ''}`}
-			style={swipeBg ? ({ '--swipe-bg': swipeBg } as React.CSSProperties) : undefined}
+			className={`swipe-row${
+				dragDirection ? ` is-pulling-${dragDirection}` : ''
+			}`}
+			style={
+				swipeBg ? ({ '--swipe-bg': swipeBg } as React.CSSProperties) : undefined
+			}
 		>
 			<button
 				className={`swipe-row-action swipe-row-action-left${
