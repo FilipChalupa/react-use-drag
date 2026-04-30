@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useMemo, useState } from 'react'
-import { useDrag, type PositionWithVelocity } from '../src/index'
+import { useDrag, type DragBounds, type PositionWithVelocity } from '../src/index'
 import { sourceLink } from './sourceLink'
-import { SwipeRow, type MailItem } from './SwipeRow'
 import './styles.css'
+import { SwipeRow, type MailItem } from './SwipeRow'
 
 const initialMail: MailItem[] = Array.from({ length: 14 }, (_, index) => ({
 	id: index + 1,
@@ -38,11 +38,18 @@ const BottomSheet = () => {
 		[position.x, position.y],
 	)
 
+	// Prevent dragging the sheet above its default (fully revealed) position.
+	const bounds = useMemo(
+		(): DragBounds => ({ minY: -position.y }),
+		[position.y],
+	)
+
 	const { elementProps, state } = useDrag({
 		onRelativePositionChange,
 		onEnd,
 		snapPoints,
 		inertia: true,
+		bounds,
 	})
 
 	const handleArchive = useCallback((id: number) => {
