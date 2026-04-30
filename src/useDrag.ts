@@ -260,6 +260,25 @@ export const useDrag = (options: UseDragOptions) => {
 	const boundsRef = useRef(bounds)
 	useEffect(() => {
 		boundsRef.current = bounds
+		// When bounds tighten while the element is resting outside them, fire an
+		// instant correction so the visual position jumps inside immediately.
+		if (dragStateRef.current !== 'resting') return
+		const correction = applyBounds(offsetPositionRef.current, bounds)
+		if (
+			correction.x === offsetPositionRef.current.x &&
+			correction.y === offsetPositionRef.current.y
+		)
+			return
+		onRelativePositionChangeRef.current({
+			x: correction.x,
+			y: correction.y,
+			velocity: { x: 0, y: 0 },
+		})
+		onEndRef.current?.({
+			x: correction.x,
+			y: correction.y,
+			velocity: { x: 0, y: 0 },
+		})
 	}, [bounds])
 
 	const transitionTo = useCallback((next: DragState) => {
