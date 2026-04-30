@@ -115,7 +115,10 @@ export interface UseDragOptions {
 	) => boolean
 }
 
-const applyBounds = (pos: Position, bounds: DragBounds | undefined): Position => {
+const applyBounds = (
+	pos: Position,
+	bounds: DragBounds | undefined,
+): Position => {
 	if (!bounds) return pos
 	let x = pos.x
 	let y = pos.y
@@ -659,7 +662,10 @@ export const useDrag = (options: UseDragOptions) => {
 
 				if (useSnap && !useInertia) {
 					finishNow(
-						applyBounds(chooseSnapPoint(clampedProjected, snapPoints), currentBounds),
+						applyBounds(
+							chooseSnapPoint(clampedProjected, snapPoints),
+							currentBounds,
+						),
 						{ x: 0, y: 0 },
 					)
 					return
@@ -866,7 +872,10 @@ export const useDrag = (options: UseDragOptions) => {
 					window.scrollY -
 					(startPosition.current.y + startPosition.current.scrollY),
 			}
-			const newOffsetPosition = applyBounds(rawOffsetPosition, boundsRef.current)
+			const newOffsetPosition = applyBounds(
+				rawOffsetPosition,
+				boundsRef.current,
+			)
 			if (lastMoveRef.current !== null) {
 				const deltaMilliseconds = now - lastMoveRef.current.time
 				if (deltaMilliseconds > 0) {

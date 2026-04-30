@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useCallback, useMemo, useState } from 'react'
-import { useDrag, type DragBounds, type PositionWithVelocity } from '../src/index'
+import {
+	useDrag,
+	type DragBounds,
+	type PositionWithVelocity,
+} from '../src/index'
 import { sourceLink } from './sourceLink'
 import './styles.css'
 
@@ -67,7 +71,11 @@ const BoundsDemo = ({
 
 	return (
 		<div className="demo-canvas">
-			<pre className="readout">{`state: ${state}\nx: ${Math.round(x)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(velocity.y)}`}</pre>
+			<pre className="readout">{`state: ${state}\nx: ${Math.round(
+				x,
+			)}\ny: ${Math.round(y)}\nvx: ${Math.round(velocity.x)}\nvy: ${Math.round(
+				velocity.y,
+			)}`}</pre>
 
 			{useMinX && (
 				<div
@@ -146,7 +154,9 @@ const meta: Meta<typeof BoundsDemo> = {
 		layout: 'fullscreen',
 		docs: {
 			description: {
-				component: `Drag the button and observe how it stays within the orange boundary lines. Toggle individual bounds and inertia via the controls. With inertia enabled, flicking the element towards a bound causes it to spring gently to the boundary — the same physics as snapping to a snap point — rather than cutting off abruptly. Bounds are specified in the same relative coordinate space as \`onRelativePositionChange\`.\n\n${sourceLink('Bounds.stories.tsx')}`,
+				component: `Drag the button and observe how it stays within the orange boundary lines. Toggle individual bounds and inertia via the controls. With inertia enabled, flicking the element towards a bound causes it to spring gently to the boundary — the same physics as snapping to a snap point — rather than cutting off abruptly. Bounds are specified in the same relative coordinate space as \`onRelativePositionChange\`.\n\n${sourceLink(
+					'Bounds.stories.tsx',
+				)}`,
 			},
 		},
 	},
