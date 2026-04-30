@@ -926,8 +926,30 @@ export const useDrag = (options: UseDragOptions) => {
 		[onPointerDown, onPointerMove, onPointerUp, onPointerCancel],
 	)
 
+	/**
+	 * Programmatically animate the element to `target` using the same spring
+	 * physics as snap points. Safe to call while coasting — interrupts the
+	 * current animation and springs to the new target from wherever the element
+	 * is at that moment, absorbing the in-flight velocity. Does nothing during
+	 * an active pointer drag. Respects `bounds` if set.
+	 *
+	 * `target` is in the same coordinate space as `onRelativePositionChange` —
+	 * relative to the element's current resting position.
+	 */
+	const translateTo = useCallback(
+		(target: Position) => {
+			if (dragStateRef.current === 'dragging') return
+			startCoasting(
+				applyBounds(target, boundsRef.current),
+				offsetPositionRef.current,
+				velocityRef.current,
+			)
+		},
+		[startCoasting],
+	)
+
 	return useMemo(
-		() => ({ state: dragState, elementProps }),
-		[dragState, elementProps],
+		() => ({ state: dragState, elementProps, translateTo }),
+		[dragState, elementProps, translateTo],
 	)
 }
