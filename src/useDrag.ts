@@ -42,6 +42,21 @@ export interface PositionWithVelocity extends Position {
 
 export type DragState = 'resting' | 'dragging' | 'coasting'
 
+/**
+ * Axis-aligned bounding box for the drag position. Each field is optional;
+ * omitting a field leaves that edge unconstrained. Values are in the same
+ * coordinate space as `onRelativePositionChange` — i.e. relative to the
+ * element's position at the start of the current gesture. Translate
+ * canvas-absolute limits by subtracting the element's current accumulated
+ * position before passing them in (the same pattern as `snapPoints`).
+ */
+export interface DragBounds {
+	minX?: number
+	maxX?: number
+	minY?: number
+	maxY?: number
+}
+
 export interface UseDragOptions {
 	/** Called when the position changes during dragging or coasting. Position is relative to the start. */
 	onRelativePositionChange: (position: PositionWithVelocity) => void
@@ -64,6 +79,15 @@ export interface UseDragOptions {
 	 * without `inertia` it teleports there immediately.
 	 */
 	snapPoints?: Position[]
+	/**
+	 * Optional. Axis-aligned bounds that keep the drag position within a rectangle.
+	 * During dragging the position is hard-clamped. On release with `inertia`
+	 * enabled, if the projected coasting endpoint would exceed a bound the element
+	 * springs to that bound the same way it springs to a snap point — gradually
+	 * settling instead of stopping abruptly. Bounds are applied before snap-point
+	 * selection so that a snap point outside the allowed area is pulled back in.
+	 */
+	bounds?: DragBounds
 	/**
 	 * Optional escape hatch. Evaluated on the first pointermove past a few-pixel
 	 * threshold. Return `true` to take over the gesture as a drag, `false` to
@@ -89,6 +113,34 @@ export interface UseDragOptions {
 		firstMove: Position,
 		info: { pointerType: 'mouse' | 'touch' | 'pen' | (string & {}) },
 	) => boolean
+}
+
+const applyBounds = (pos: Position, bounds: DragBounds | undefined): Position => {
+	if (!bounds) return pos
+	let x = pos.x
+	let y = pos.y
+	if (bounds.minX !== undefined) x = Math.max(x, bounds.minX)
+	if (bounds.maxX !== undefined) x = Math.min(x, bounds.maxX)
+	if (bounds.minY !== undefined) y = Math.max(y, bounds.minY)
+	if (bounds.maxY !== undefined) y = Math.min(y, bounds.maxY)
+	return { x, y }
+}
+
+// Zero out velocity components pointing further into a bound that is already
+// reached. Prevents inertia from pushing through a wall the element is sitting on.
+const clampVelocityAtBounds = (
+	vel: Velocity,
+	pos: Position,
+	bounds: DragBounds | undefined,
+): Velocity => {
+	if (!bounds) return vel
+	let x = vel.x
+	let y = vel.y
+	if (bounds.maxX !== undefined && pos.x >= bounds.maxX && x > 0) x = 0
+	if (bounds.minX !== undefined && pos.x <= bounds.minX && x < 0) x = 0
+	if (bounds.maxY !== undefined && pos.y >= bounds.maxY && y > 0) y = 0
+	if (bounds.minY !== undefined && pos.y <= bounds.minY && y < 0) y = 0
+	return { x, y }
 }
 
 /**
@@ -133,6 +185,7 @@ export const useDrag = (options: UseDragOptions) => {
 		onEnd,
 		inertia,
 		snapPoints,
+		bounds,
 		shouldStart,
 	} = options
 	const [dragState, setDragState] = useState<DragState>('resting')
@@ -204,6 +257,10 @@ export const useDrag = (options: UseDragOptions) => {
 	useEffect(() => {
 		onRelativePositionChangeRef.current = onRelativePositionChange
 	}, [onRelativePositionChange])
+	const boundsRef = useRef(bounds)
+	useEffect(() => {
+		boundsRef.current = bounds
+	}, [bounds])
 
 	const transitionTo = useCallback((next: DragState) => {
 		dragStateRef.current = next
@@ -565,45 +622,57 @@ export const useDrag = (options: UseDragOptions) => {
 
 				const useInertia = !!inertia
 				const useSnap = !!snapPoints && snapPoints.length > 0
+				const currentBounds = boundsRef.current
+				const currentPos = applyBounds(offsetPositionRef.current, currentBounds)
+				const currentVel = clampVelocityAtBounds(
+					velocityRef.current,
+					currentPos,
+					currentBounds,
+				)
 
 				if (!useInertia && !useSnap) {
-					finishNow(offsetPositionRef.current, velocityRef.current)
+					finishNow(currentPos, currentVel)
 					return
 				}
 
+				const projected = projectInertiaEndpoint(currentPos, currentVel)
+				const clampedProjected = applyBounds(projected, currentBounds)
+
 				if (useSnap && !useInertia) {
-					const target = chooseSnapPoint(
-						projectInertiaEndpoint(
-							offsetPositionRef.current,
-							velocityRef.current,
-						),
-						snapPoints,
+					finishNow(
+						applyBounds(chooseSnapPoint(clampedProjected, snapPoints), currentBounds),
+						{ x: 0, y: 0 },
 					)
-					finishNow(target, { x: 0, y: 0 })
 					return
 				}
 
 				if (
 					useInertia &&
 					!useSnap &&
-					Math.abs(velocityRef.current.x) < settleVelocityThreshold &&
-					Math.abs(velocityRef.current.y) < settleVelocityThreshold
+					Math.abs(currentVel.x) < settleVelocityThreshold &&
+					Math.abs(currentVel.y) < settleVelocityThreshold
 				) {
-					finishNow(offsetPositionRef.current, velocityRef.current)
+					finishNow(currentPos, currentVel)
 					return
 				}
 
-				const target =
-					useSnap && snapPoints
-						? chooseSnapPoint(
-								projectInertiaEndpoint(
-									offsetPositionRef.current,
-									velocityRef.current,
-								),
-								snapPoints,
-							)
-						: null
-				startCoasting(target, offsetPositionRef.current, velocityRef.current)
+				let target: Position | null
+				if (useSnap && snapPoints) {
+					target = applyBounds(
+						chooseSnapPoint(clampedProjected, snapPoints),
+						currentBounds,
+					)
+				} else {
+					// Pure inertia: if the projected endpoint exceeds a bound, spring to
+					// that bound the same way the element springs to a snap point.
+					target =
+						currentBounds !== undefined &&
+						(clampedProjected.x !== projected.x ||
+							clampedProjected.y !== projected.y)
+							? clampedProjected
+							: null
+				}
+				startCoasting(target, currentPos, currentVel)
 			}
 		},
 		[
@@ -768,7 +837,7 @@ export const useDrag = (options: UseDragOptions) => {
 
 			event.preventDefault()
 			const now = performance.now()
-			const newOffsetPosition = {
+			const rawOffsetPosition = {
 				x:
 					event.clientX +
 					window.scrollX -
@@ -778,6 +847,7 @@ export const useDrag = (options: UseDragOptions) => {
 					window.scrollY -
 					(startPosition.current.y + startPosition.current.scrollY),
 			}
+			const newOffsetPosition = applyBounds(rawOffsetPosition, boundsRef.current)
 			if (lastMoveRef.current !== null) {
 				const deltaMilliseconds = now - lastMoveRef.current.time
 				if (deltaMilliseconds > 0) {

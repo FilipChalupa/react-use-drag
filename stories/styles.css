@@ -69,6 +69,25 @@ button {
 	translate: var(--x, 0) var(--y, 0);
 }
 
+.bound-line {
+	position: absolute;
+	pointer-events: none;
+	background: #f0a040;
+	opacity: 0.6;
+}
+
+.bound-line-x {
+	width: 2px;
+	top: 0;
+	bottom: 0;
+}
+
+.bound-line-y {
+	height: 2px;
+	left: 0;
+	right: 0;
+}
+
 .scrollable-card {
 	width: 280px;
 	height: 320px;
