@@ -14,8 +14,10 @@ const initialMail: MailItem[] = Array.from({ length: 14 }, (_, index) => ({
 	isRead: false,
 }))
 
+const closedY = 300
+
 const BottomSheet = () => {
-	const [position, setPosition] = useState({ x: 0, y: 0 })
+	const [position, setPosition] = useState({ x: 0, y: closedY })
 	const [positionOffset, setPositionOffset] = useState({ x: 0, y: 0 })
 	const [items, setItems] = useState(initialMail)
 
@@ -33,7 +35,7 @@ const BottomSheet = () => {
 	const snapPoints = useMemo(
 		() => [
 			{ x: -position.x, y: -position.y },
-			{ x: -position.x, y: 300 - position.y },
+			{ x: -position.x, y: closedY - position.y },
 		],
 		[position.x, position.y],
 	)
