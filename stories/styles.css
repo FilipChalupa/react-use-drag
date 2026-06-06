@@ -179,6 +179,17 @@ button {
 	color: #333;
 }
 
+.bottom-sheet-subtitle {
+	margin: 0;
+	padding: 0.5rem 1rem 0.25rem;
+	background: #f6f6f6;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #888;
+}
+
 .bottom-sheet-empty {
 	display: flex;
 	align-items: center;

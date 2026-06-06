@@ -63,6 +63,14 @@ const BottomSheet = () => {
 		)
 	}, [])
 
+	const sections = useMemo(
+		() => [
+			{ label: 'Today', items: items.filter((item) => item.id <= 5) },
+			{ label: 'Yesterday', items: items.filter((item) => item.id > 5) },
+		],
+		[items],
+	)
+
 	const y = position.y + positionOffset.y
 
 	return (
@@ -79,15 +87,22 @@ const BottomSheet = () => {
 						Inbox{items.length > 0 ? ` (${items.length})` : ''}
 					</h2>
 					{items.length > 0 ? (
-						items.map((item) => (
-							<SwipeRow
-								key={item.id}
-								item={item}
-								onArchive={handleArchive}
-								onSnooze={handleSnooze}
-								onTap={handleTap}
-							/>
-						))
+						sections.map(({ label, items: sectionItems }) =>
+							sectionItems.length > 0 ? (
+								<div key={label}>
+									<h3 className="bottom-sheet-subtitle">{label}</h3>
+									{sectionItems.map((item) => (
+										<SwipeRow
+											key={item.id}
+											item={item}
+											onArchive={handleArchive}
+											onSnooze={handleSnooze}
+											onTap={handleTap}
+										/>
+									))}
+								</div>
+							) : null,
+						)
 					) : (
 						<div className="bottom-sheet-empty">
 							All caught up — drag to close
