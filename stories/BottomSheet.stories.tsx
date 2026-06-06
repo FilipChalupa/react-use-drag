@@ -73,6 +73,9 @@ const BottomSheet = () => {
 			>
 				<div className="bottom-sheet-handle" />
 				<div className="bottom-sheet-content">
+					<h2 className="bottom-sheet-title">
+						Inbox{items.length > 0 ? ` (${items.length})` : ''}
+					</h2>
 					{items.length > 0 ? (
 						items.map((item) => (
 							<SwipeRow
