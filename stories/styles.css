@@ -116,6 +116,37 @@ button {
 	white-space: nowrap;
 }
 
+.cross-axis-content {
+	white-space: normal;
+}
+
+.carousel {
+	display: flex;
+	gap: 0.5rem;
+	/* Horizontal scroller only — vertical stays put. `touch-action: none` so the
+	   hook (not the browser) drives the scroll, same as the outer list. */
+	overflow-x: auto;
+	overflow-y: hidden;
+	touch-action: none;
+	margin: 0.75rem 0;
+	padding-bottom: 0.5rem;
+}
+
+.carousel-item {
+	flex: 0 0 auto;
+	width: 120px;
+	height: 80px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #007aff;
+	color: white;
+	border-radius: 8px;
+	font-size: 0.875rem;
+	font-weight: 600;
+	user-select: none;
+}
+
 .bottom-sheet-canvas {
 	position: relative;
 	width: 100%;

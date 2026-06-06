@@ -201,9 +201,12 @@ export const useDrag = (options: UseDragOptions) => {
 	const velocityResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const animationFrameRef = useRef<number | null>(null)
 	const coastingStateRef = useRef<CoastingData | null>(null)
-	// Set on pointerdown when arming is in play (either shouldStart is provided
-	// or the hook auto-detected a scrollable subtree). Cleared on the first move
-	// that either promotes to a drag or decides not to.
+	// Set on pointerdown for every gesture (arming is unconditional). Cleared on
+	// the first move that either promotes to a drag or decides not to.
+	// `scrollResolveTarget` is the touch/pen origin element (null for mouse); the
+	// actual scroll target is resolved from it lazily on the first move, once the
+	// locked axis is known, so an axis-mismatched scroller (e.g. a horizontal
+	// carousel under a vertical gesture) is skipped rather than dead-scrolled.
 	// Known limitation: for mouse without shouldStart, setPointerCapture is not
 	// called on pointerdown (doing so would break nested-hook coordination). If
 	// the pointer exits the element before the 5 px arming threshold fires, the
@@ -213,7 +216,7 @@ export const useDrag = (options: UseDragOptions) => {
 	// holds a stale pointerId that would incorrectly promote a hover into a drag.
 	const armingRef = useRef<{
 		pointerId: number
-		scrollableAncestor: Element | null
+		scrollResolveTarget: EventTarget | null
 		capturedOnPointerDown: boolean
 	} | null>(null)
 	// Set when the hook is taking over native scroll manually (after the arming
@@ -557,17 +560,14 @@ export const useDrag = (options: UseDragOptions) => {
 			lastMoveRef.current = null
 			velocityRef.current = { x: 0, y: 0 }
 
-			// Detect a scrollable subtree for any touch/pen gesture — independent of
-			// whether `shouldStart` is provided. `shouldStart` decides "is this a
-			// drag?"; this decides "where does the gesture go when it isn't?". With
-			// a custom `shouldStart` returning false, a detected scrollable lets the
-			// hook drive the scroll itself instead of releasing to the (dead, under
-			// `touch-action: none`) native scroll. Mouse has no scroll-by-drag, so
-			// the arming verdict on first move will go straight to drag.
-			const scrollableAncestor =
-				event.pointerType !== 'mouse'
-					? findScrollableAncestor(event.target, event.currentTarget)
-					: null
+			// Remember the gesture's origin element for touch/pen — the scroll
+			// target is resolved from it lazily on the first move, once the locked
+			// axis is known (see the verdict below). `shouldStart` decides "is this
+			// a drag?"; the resolved scrollable decides "where does the gesture go
+			// when it isn't?". Mouse has no scroll-by-drag, so it keeps no target
+			// and the first-move verdict goes straight to drag.
+			const scrollResolveTarget =
+				event.pointerType !== 'mouse' ? event.target : null
 
 			// Always arm — never claim or capture on pointerdown. The first move
 			// runs the arming verdict; if multiple useDrag instances overlap on
@@ -581,7 +581,7 @@ export const useDrag = (options: UseDragOptions) => {
 			}
 			armingRef.current = {
 				pointerId: event.pointerId,
-				scrollableAncestor,
+				scrollResolveTarget,
 				capturedOnPointerDown,
 			}
 		},
@@ -794,13 +794,26 @@ export const useDrag = (options: UseDragOptions) => {
 					return
 				}
 				const delta = { x: deltaX, y: deltaY }
-				const scrollableAncestor = armingRef.current.scrollableAncestor
 				// Lock to the dominant axis of the gesture; off-axis drift is ignored
 				// for the rest of the gesture. The auto-detect verdict only checks
 				// the locked axis too — a slight horizontal jitter while pulling
 				// down at scrollTop=0 won't kick us into scroll mode.
 				const lockedAxis: 'x' | 'y' =
 					Math.abs(deltaY) >= Math.abs(deltaX) ? 'y' : 'x'
+				// Resolve the scroll target for the LOCKED AXIS only. A horizontal
+				// carousel (scrollable on X, not Y) must be skipped for a vertical
+				// gesture — otherwise it captures the gesture and dead-scrolls it,
+				// blocking an outer vertical drag/scroll (e.g. a bottom sheet). When
+				// nothing is scrollable on the locked axis this is null, and the
+				// !accept branch below releases instead of claiming so the gesture
+				// can bubble to an outer useDrag.
+				const scrollableAncestor = armingRef.current.scrollResolveTarget
+					? findScrollableAncestor(
+							armingRef.current.scrollResolveTarget,
+							event.currentTarget,
+							lockedAxis,
+						)
+					: null
 				const axisLockedDelta =
 					lockedAxis === 'y' ? { x: 0, y: deltaY } : { x: deltaX, y: 0 }
 				const accept = shouldStart
