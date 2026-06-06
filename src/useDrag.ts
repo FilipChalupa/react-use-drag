@@ -557,11 +557,15 @@ export const useDrag = (options: UseDragOptions) => {
 			lastMoveRef.current = null
 			velocityRef.current = { x: 0, y: 0 }
 
-			// Auto-detect a scrollable subtree only when shouldStart isn't provided
-			// and the input is touch/pen — mouse has no scroll-by-drag, so the
-			// arming verdict on first move will go straight to drag.
+			// Detect a scrollable subtree for any touch/pen gesture — independent of
+			// whether `shouldStart` is provided. `shouldStart` decides "is this a
+			// drag?"; this decides "where does the gesture go when it isn't?". With
+			// a custom `shouldStart` returning false, a detected scrollable lets the
+			// hook drive the scroll itself instead of releasing to the (dead, under
+			// `touch-action: none`) native scroll. Mouse has no scroll-by-drag, so
+			// the arming verdict on first move will go straight to drag.
 			const scrollableAncestor =
-				!shouldStart && event.pointerType !== 'mouse'
+				event.pointerType !== 'mouse'
 					? findScrollableAncestor(event.target, event.currentTarget)
 					: null
 
