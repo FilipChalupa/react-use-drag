@@ -561,13 +561,18 @@ export const useDrag = (options: UseDragOptions) => {
 			const scrollResolveTarget =
 				event.pointerType !== 'mouse' ? event.target : null
 
-			// Always arm — never claim or capture on pointerdown. The first move
-			// runs the arming verdict; if multiple useDrag instances overlap on
-			// the gesture path, the innermost evaluates first via React's natural
-			// pointer-event bubble and the global `claimedPointers` set keeps
-			// outers from also claiming once an inner has committed.
+			// For mouse, capture immediately when the gesture originates from this
+			// element itself — i.e. there is no nested useDrag between event.target
+			// and this element. Without capture, moving outside the element before
+			// the arming threshold fires causes all subsequent events to be lost.
+			// When a nested useDrag IS present, skip capture so the inner hook can
+			// arm first via natural bubble; the global `claimedPointers` set then
+			// keeps outer hooks from also claiming once an inner has committed.
+			const nearestDragEl = (event.target as Element).closest?.(
+				'[data-use-drag]',
+			)
 			const capturedOnPointerDown =
-				!!shouldStart && event.pointerType === 'mouse'
+				event.pointerType === 'mouse' && nearestDragEl === event.currentTarget
 			if (capturedOnPointerDown) {
 				event.currentTarget.setPointerCapture(event.pointerId)
 			}
@@ -577,7 +582,7 @@ export const useDrag = (options: UseDragOptions) => {
 				capturedOnPointerDown,
 			}
 		},
-		[shouldStart, cancelVelocityReset],
+		[cancelVelocityReset],
 	)
 
 	const handleEnd = useCallback(
@@ -927,6 +932,7 @@ export const useDrag = (options: UseDragOptions) => {
 
 	const elementProps = useMemo(
 		() => ({
+			'data-use-drag': '',
 			onPointerDown,
 			onPointerUp,
 			onPointerMove,
