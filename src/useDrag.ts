@@ -9,10 +9,8 @@ import {
 import {
 	chooseSnapPoint,
 	inertiaFrictionPerSecond,
-	maximumSnapFrameDeltaSeconds,
 	projectInertiaEndpoint,
 	settleVelocityThreshold,
-	snapDamping,
 	snapDistanceThreshold,
 	snapStiffness,
 } from './coastingMath'
@@ -170,7 +168,6 @@ interface CoastingData {
 	startVelocity: Velocity
 	lastPosition: Position
 	lastVelocity: Velocity
-	lastFrameTime: number
 	target: Position | null
 }
 
@@ -374,24 +371,21 @@ export const useDrag = (options: UseDragOptions) => {
 					done = true
 				}
 			} else {
-				// Snap with inertia — critically damped spring; absorbs release velocity.
-				const deltaSeconds = Math.min(
-					(now - data.lastFrameTime) / 1000,
-					maximumSnapFrameDeltaSeconds,
-				)
-				const accelerationX =
-					-snapStiffness * (data.lastPosition.x - data.target.x) -
-					snapDamping * data.lastVelocity.x
-				const accelerationY =
-					-snapStiffness * (data.lastPosition.y - data.target.y) -
-					snapDamping * data.lastVelocity.y
-				nextVelocity = {
-					x: data.lastVelocity.x + accelerationX * deltaSeconds,
-					y: data.lastVelocity.y + accelerationY * deltaSeconds,
-				}
+				// Snap — exact closed-form critically-damped spring; no integration error.
+				const omega = Math.sqrt(snapStiffness)
+				const elapsed = (now - data.startTime) / 1000
+				const decay = Math.exp(-omega * elapsed)
+				const Ax = data.startPosition.x - data.target.x
+				const Ay = data.startPosition.y - data.target.y
+				const Bx = data.startVelocity.x + omega * Ax
+				const By = data.startVelocity.y + omega * Ay
 				nextPosition = {
-					x: data.lastPosition.x + nextVelocity.x * deltaSeconds,
-					y: data.lastPosition.y + nextVelocity.y * deltaSeconds,
+					x: data.target.x + (Ax + Bx * elapsed) * decay,
+					y: data.target.y + (Ay + By * elapsed) * decay,
+				}
+				nextVelocity = {
+					x: (Bx - omega * (Ax + Bx * elapsed)) * decay,
+					y: (By - omega * (Ay + By * elapsed)) * decay,
 				}
 				const distanceX = nextPosition.x - data.target.x
 				const distanceY = nextPosition.y - data.target.y
@@ -408,7 +402,6 @@ export const useDrag = (options: UseDragOptions) => {
 
 			data.lastPosition = nextPosition
 			data.lastVelocity = nextVelocity
-			data.lastFrameTime = now
 
 			if (done) {
 				finishCoasting(nextPosition, nextVelocity)
@@ -442,7 +435,6 @@ export const useDrag = (options: UseDragOptions) => {
 				startVelocity: fromVelocity,
 				lastPosition: fromPosition,
 				lastVelocity: fromVelocity,
-				lastFrameTime: now,
 				target,
 			}
 			transitionTo('coasting')
