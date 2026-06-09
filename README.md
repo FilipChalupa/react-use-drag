@@ -154,7 +154,7 @@ An object containing:
 | Property       | Type                                    | Description                                                                                                                                                                                                |
 | :------------- | :-------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `state`        | `'resting' \| 'dragging' \| 'coasting'` | `'dragging'` while the user is interacting, `'coasting'` while an inertia or snap animation is settling, `'resting'` otherwise. The `'coasting'` value only appears when `inertia` or `snapPoints` is set. |
-| `elementProps` | `object`                                | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, and `onPointerCancel`.                                                                               |
+| `elementProps` | `object`                                | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, `onPointerCancel`, and `data-use-drag` (used internally for nested-hook coordination — see below). |
 
 ## Features
 
@@ -162,7 +162,7 @@ An object containing:
 - **Inertia:** Optional friction-based decay continues the drag after release until it settles.
 - **Snap points:** Optional set of targets the position springs to (or teleports to) on release. The chosen point absorbs release velocity for natural-feeling snap.
 - **Scroll-aware:** Auto-detects scrollable descendants and turns vertical/horizontal gestures into native-feeling scroll, with momentum and dominant-axis lock. Pulling past a scroll edge promotes the gesture to a drag (rubber-band).
-- **Nested composition:** Multiple `useDrag` instances on the same element subtree coordinate without context or wrappers — innermost gets first refusal, the verdict bubbles outward through standard pointer events.
+- **Nested composition:** Multiple `useDrag` instances on the same element subtree coordinate without context or wrappers — innermost gets first refusal, the verdict bubbles outward through standard pointer events. Each draggable element gets a `data-use-drag` attribute; the hook reads it on `pointerdown` to decide whether to capture the pointer immediately (standalone element, no nested `useDrag` under the click target) or to wait for the inner hook's arming verdict first. This means standalone drag elements — resize handles, sliders — reliably track the mouse even when it exits the element before the arming threshold fires, with no extra configuration needed.
 - **Lightweight:** Zero dependencies (other than React) and tiny bundle size.
 - **TypeScript:** Fully typed for a great developer experience.
 
