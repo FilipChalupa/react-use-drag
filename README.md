@@ -154,7 +154,7 @@ An object containing:
 | Property       | Type                                    | Description                                                                                                                                                                                                |
 | :------------- | :-------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `state`        | `'resting' \| 'dragging' \| 'coasting'` | `'dragging'` while the user is interacting, `'coasting'` while an inertia or snap animation is settling, `'resting'` otherwise. The `'coasting'` value only appears when `inertia` or `snapPoints` is set. |
-| `elementProps` | `object`                                | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, `onPointerCancel`, and `data-use-drag` (used internally for nested-hook coordination — see below). |
+| `elementProps` | `object`                                | Props to be spread onto the target element. Contains `onPointerDown`, `onPointerUp`, `onPointerMove`, `onPointerCancel`, and `data-use-drag` (used internally for nested-hook coordination — see below).   |
 
 ## Features
 
